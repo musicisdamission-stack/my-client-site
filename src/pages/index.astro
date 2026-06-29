@@ -1,17 +1,256 @@
 ---
-
+import '../styles/global.css';
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Premium Experience</title>
+    <meta name="description" content="Luxury service experience — book your appointment today." />
+  </head>
+
+  <body class="bg-black text-white overflow-x-hidden">
+
+    <!-- ============================================================
+         HERO — pinned during scroll; canvas scrubs behind copy
+         ============================================================ -->
+    <section
+      id="hero-section"
+      aria-label="Hero"
+      class="relative h-screen w-full overflow-hidden"
+    >
+      <!-- Canvas: frame scrubber target. drawImage() writes here on scroll. -->
+      <canvas
+        id="scroll-canvas"
+        aria-hidden="true"
+        class="absolute inset-0 h-full w-full"
+      ></canvas>
+
+      <!-- Gradient overlay — keeps text readable over any canvas frame -->
+      <div
+        class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"
+        aria-hidden="true"
+      ></div>
+
+      <!-- Semantic hero copy -->
+      <div class="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
+        <p class="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-neutral-400">
+          Est. 2024
+        </p>
+        <h1 class="text-5xl font-semibold leading-tight tracking-tight sm:text-7xl lg:text-8xl">
+          Crafted for<br />
+          <span class="italic font-light">you.</span>
+        </h1>
+        <p class="mt-6 max-w-md text-base text-neutral-300 sm:text-lg">
+          A premium experience, designed around your time.
+        </p>
+        <a
+          href="#book"
+          class="mt-10 inline-block rounded-full border border-white/30 px-8 py-3 text-sm font-medium tracking-wide transition-all duration-300 hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          aria-label="Book your appointment"
+        >
+          Book Now
+        </a>
+
+        <!-- Scroll cue -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2" aria-hidden="true">
+          <div id="scroll-cue" class="flex flex-col items-center gap-2 opacity-70">
+            <span class="text-xs tracking-widest uppercase text-neutral-400">Scroll</span>
+            <div class="h-8 w-px bg-gradient-to-b from-white/60 to-transparent"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SCROLL SPACER — gives ScrollTrigger room to scrub canvas.
+         Swap height to (totalFrames / fps * scrollPx) once video lands.
+         ============================================================ -->
+    <div id="scrub-spacer" class="h-[200vh]" aria-hidden="true"></div>
+
+    <!-- ============================================================
+         SERVICES — semantic content, revealed on scroll
+         ============================================================ -->
+    <section
+      id="services"
+      aria-labelledby="services-heading"
+      class="relative z-10 bg-neutral-950 px-6 py-24 sm:py-32"
+    >
+      <div class="mx-auto max-w-5xl">
+        <p class="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+          What We Offer
+        </p>
+        <h2
+          id="services-heading"
+          class="text-4xl font-semibold tracking-tight sm:text-5xl"
+        >
+          Services
+        </h2>
+
+        <ul
+          class="mt-16 grid gap-px border border-neutral-800 sm:grid-cols-2 lg:grid-cols-3"
+          role="list"
+        >
+          {[
+            { name: 'Service One',   desc: 'Short description of what this premium service delivers to the client.' },
+            { name: 'Service Two',   desc: 'Short description of what this premium service delivers to the client.' },
+            { name: 'Service Three', desc: 'Short description of what this premium service delivers to the client.' },
+            { name: 'Service Four',  desc: 'Short description of what this premium service delivers to the client.' },
+            { name: 'Service Five',  desc: 'Short description of what this premium service delivers to the client.' },
+            { name: 'Service Six',   desc: 'Short description of what this premium service delivers to the client.' },
+          ].map((s) => (
+            <li class="service-card group relative bg-neutral-950 p-8 transition-colors duration-300 hover:bg-neutral-900">
+              <h3 class="text-lg font-medium">{s.name}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-neutral-400">{s.desc}</p>
+              <span
+                class="absolute bottom-8 right-8 text-neutral-700 transition-colors duration-300 group-hover:text-white"
+                aria-hidden="true"
+              >&#8594;</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         BOOKING CTA — Calendly / Boulevard embed target
+         ============================================================ -->
+    <section
+      id="book"
+      aria-labelledby="book-heading"
+      class="relative z-10 bg-black px-6 py-24 text-center sm:py-32"
+    >
+      <div class="mx-auto max-w-2xl">
+        <p class="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+          Ready?
+        </p>
+        <h2
+          id="book-heading"
+          class="text-4xl font-semibold tracking-tight sm:text-5xl"
+        >
+          Book Your<br />
+          <span class="italic font-light">Appointment</span>
+        </h2>
+        <p class="mt-6 text-base text-neutral-400">
+          Select a time that works for you. No waiting rooms.
+        </p>
+
+        <!-- Calendly inline embed placeholder -->
+        <div
+          id="calendly-embed"
+          class="mt-10 min-h-[120px] rounded-2xl border border-neutral-800 bg-neutral-950 p-8"
+          aria-label="Booking calendar"
+        >
+          <p class="text-sm text-neutral-600 italic">[ Calendly / Boulevard widget mounts here ]</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         FOOTER
+         ============================================================ -->
+    <footer class="border-t border-neutral-900 px-6 py-10 text-center text-xs text-neutral-600">
+      <p>&copy; {new Date().getFullYear()} &#8212; All rights reserved.</p>
+    </footer>
+
+    <!-- ============================================================
+         GSAP — ScrollTrigger canvas scrubber + reveal animations
+         ============================================================ -->
+    <script>
+      import { gsap } from 'gsap';
+      import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      /* ----------------------------------------------------------
+         Canvas frame scrubber
+         ─ Phase 2: replace drawPlaceholderFrame() with:
+             ctx.drawImage(frames[Math.round(progress * (frames.length - 1))], 0, 0, canvas.width, canvas.height)
+           after pre-loading ImageBitmap frames from the video asset.
+         ---------------------------------------------------------- */
+      const canvas = document.getElementById('scroll-canvas') as HTMLCanvasElement;
+      const ctx = canvas?.getContext('2d');
+
+      function resizeCanvas() {
+        if (!canvas) return;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        drawPlaceholderFrame(currentProgress);
+      }
+
+      let currentProgress = 0;
+
+      function drawPlaceholderFrame(progress: number) {
+        if (!ctx || !canvas) return;
+        currentProgress = progress;
+        // Warm gradient sweep: dark cool → warm gold as scroll advances
+        const hue = Math.round(progress * 40);
+        const lightness = 5 + progress * 12;
+        ctx.fillStyle = `hsl(${hue}, 20%, ${lightness}%)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas, { passive: true });
+
+      // Pin hero; scrub canvas across the spacer height
+      ScrollTrigger.create({
+        trigger: '#hero-section',
+        start: 'top top',
+        end: () => `+=${document.getElementById('scrub-spacer')?.offsetHeight ?? window.innerHeight * 2}`,
+        pin: true,
+        pinSpacing: false,
+        scrub: 1,
+        onUpdate(self) {
+          drawPlaceholderFrame(self.progress);
+        },
+      });
+
+      /* ----------------------------------------------------------
+         Scroll-cue fade out
+         ---------------------------------------------------------- */
+      gsap.to('#scroll-cue', {
+        opacity: 0,
+        y: -10,
+        scrollTrigger: {
+          trigger: '#hero-section',
+          start: 'top top',
+          end: '+=300',
+          scrub: true,
+        },
+      });
+
+      /* ----------------------------------------------------------
+         Services cards — staggered reveal
+         ---------------------------------------------------------- */
+      gsap.from('.service-card', {
+        opacity: 0,
+        y: 40,
+        duration: 0.7,
+        stagger: 0.1,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: '#services',
+          start: 'top 80%',
+        },
+      });
+
+      /* ----------------------------------------------------------
+         Book section — fade up
+         ---------------------------------------------------------- */
+      gsap.from('#book > div', {
+        opacity: 0,
+        y: 50,
+        duration: 0.9,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: '#book',
+          start: 'top 75%',
+        },
+      });
+    </script>
+  </body>
 </html>
