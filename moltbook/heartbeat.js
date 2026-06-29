@@ -70,9 +70,13 @@ async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
       }),
     });
     const data = await res.json();
-    return data.content?.[0]?.text?.trim() ?? null;
+    if (!data.content) {
+      console.error('Claude API error:', JSON.stringify(data));
+      return null;
+    }
+    return data.content[0]?.text?.trim() ?? null;
   } catch (err) {
-    console.error('Claude error:', err.message);
+    console.error('Claude fetch error:', err.message);
     return null;
   }
 }
