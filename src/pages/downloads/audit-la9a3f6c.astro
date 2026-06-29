@@ -1,0 +1,207 @@
+---
+import '../../styles/global.css';
+
+const site = {
+  url: '',
+  date: '',
+  auditor: 'LiminalArbitrage / NetiVana',
+};
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Audit Report Template — NetiVana</title>
+  <meta name="robots" content="noindex, nofollow" />
+</head>
+<body class="bg-black text-white min-h-screen px-6 py-16">
+<div class="mx-auto max-w-3xl">
+
+  <p class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-2">NetiVana · Digital Download</p>
+  <h1 class="text-4xl font-bold tracking-tight mb-2">Web Audit Report Template</h1>
+  <p class="text-neutral-400 mb-4">Fill in each section. Use Lighthouse (in Chrome DevTools → Lighthouse tab) for the scored sections. Aim to run audits in an incognito window with extensions disabled.</p>
+  <div class="bg-neutral-950 border border-neutral-800 rounded p-4 text-sm font-mono mb-12 space-y-1">
+    <p>Site URL: <span class="text-neutral-500">_______________________________________________</span></p>
+    <p>Audit date: <span class="text-neutral-500">_______________________________________________</span></p>
+    <p>Device tested: <span class="text-neutral-500">☐ Mobile (primary) &nbsp; ☐ Desktop</span></p>
+    <p>Tool: Lighthouse / Chrome DevTools &nbsp;|&nbsp; PageSpeed Insights &nbsp;|&nbsp; Manual</p>
+  </div>
+
+  <hr class="border-neutral-800 mb-12" />
+
+  <!-- SECTION 1: PERFORMANCE -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">01 — Lighthouse Performance Score</h2>
+    <p class="text-neutral-500 text-xs mb-6">Run: Chrome DevTools → Lighthouse → Mobile → Performance → Analyze page load</p>
+    <div class="overflow-x-auto mb-6">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-neutral-800">
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Metric</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Your Score</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Target</th>
+            <th class="text-left py-3 text-neutral-500 font-medium">Pass?</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-900 text-neutral-400">
+          <tr><td class="py-3 pr-8">Overall Performance</td><td class="py-3 pr-8">___</td><td class="py-3 pr-8">≥ 90</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">LCP (Largest Contentful Paint)</td><td class="py-3 pr-8">___s</td><td class="py-3 pr-8">≤ 2.5s</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">INP (Interaction to Next Paint)</td><td class="py-3 pr-8">___ms</td><td class="py-3 pr-8">≤ 200ms</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">CLS (Cumulative Layout Shift)</td><td class="py-3 pr-8">___</td><td class="py-3 pr-8">≤ 0.1</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">FCP (First Contentful Paint)</td><td class="py-3 pr-8">___s</td><td class="py-3 pr-8">≤ 1.8s</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">TTFB (Time to First Byte)</td><td class="py-3 pr-8">___ms</td><td class="py-3 pr-8">≤ 800ms</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">Speed Index</td><td class="py-3 pr-8">___s</td><td class="py-3 pr-8">≤ 3.4s</td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">Total Blocking Time</td><td class="py-3 pr-8">___ms</td><td class="py-3 pr-8">≤ 200ms</td><td class="py-3">☐ ☐</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-neutral-950 border border-neutral-800 rounded p-4 text-sm">
+      <p class="text-neutral-500 text-xs mb-2">Top performance opportunities identified by Lighthouse:</p>
+      <p class="text-neutral-600">1. _______________________________________________</p>
+      <p class="text-neutral-600">2. _______________________________________________</p>
+      <p class="text-neutral-600">3. _______________________________________________</p>
+    </div>
+  </section>
+
+  <!-- SECTION 2: SEO -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">02 — SEO Checklist</h2>
+    <div class="space-y-3 text-sm">
+      {[
+        ['Title tag present and unique', '50–60 characters, includes primary keyword'],
+        ['Meta description present', '150–160 characters, includes a CTA'],
+        ['H1 present and singular', 'One H1 per page, matches primary keyword intent'],
+        ['Heading hierarchy correct', 'H1 → H2 → H3 — no skipped levels'],
+        ['Images have alt text', 'Descriptive, not keyword-stuffed'],
+        ['Canonical tag set', 'Prevents duplicate content issues'],
+        ['robots.txt exists and is correct', 'Not accidentally blocking crawlers'],
+        ['XML sitemap exists and submitted', 'In Google Search Console'],
+        ['Schema markup present', 'LocalBusiness, Service, or relevant type'],
+        ['Internal links functional', 'No broken links, logical structure'],
+        ['External links use rel="noopener"', 'Security + SEO hygiene'],
+        ['URL structure clean', 'Lowercase, hyphens, no parameters where avoidable'],
+        ['Page indexed by Google', 'site:yourdomain.com returns results'],
+        ['No duplicate title tags across pages', 'Audit via Screaming Frog or Ahrefs'],
+        ['Google Search Console connected', 'No crawl errors flagged'],
+      ].map(([item, note]) => (
+        <div class="flex items-start gap-4 py-2 border-b border-neutral-900">
+          <span class="text-neutral-600 mt-0.5 shrink-0">☐</span>
+          <div>
+            <p class="text-neutral-300">{item}</p>
+            <p class="text-neutral-600 text-xs mt-0.5">{note}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- SECTION 3: ACCESSIBILITY -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-1">03 — Accessibility (WCAG 2.1 AA)</h2>
+    <p class="text-neutral-500 text-xs mb-6">Run axe DevTools (free Chrome extension) for automated checks, then supplement with manual review.</p>
+    <div class="overflow-x-auto mb-6">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-neutral-800">
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Check</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Your Result</th>
+            <th class="text-left py-3 text-neutral-500 font-medium">Pass?</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-900 text-neutral-400">
+          <tr><td class="py-3 pr-8">Lighthouse Accessibility Score</td><td class="py-3 pr-8">___</td><td class="py-3">☐ ☐ (target: ≥ 95)</td></tr>
+          <tr><td class="py-3 pr-8">Color contrast ratio (normal text)</td><td class="py-3 pr-8">___ : 1</td><td class="py-3">☐ ☐ (target: ≥ 4.5:1)</td></tr>
+          <tr><td class="py-3 pr-8">Color contrast ratio (large text)</td><td class="py-3 pr-8">___ : 1</td><td class="py-3">☐ ☐ (target: ≥ 3:1)</td></tr>
+          <tr><td class="py-3 pr-8">All images have alt text</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">All buttons have accessible labels</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">All form inputs have labels</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">Keyboard navigable (Tab through page)</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">Focus indicators visible</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">No content relies solely on color</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">lang attribute on html element</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">Skip navigation link present</td><td class="py-3 pr-8"></td><td class="py-3">☐ ☐</td></tr>
+          <tr><td class="py-3 pr-8">axe DevTools: 0 critical violations</td><td class="py-3 pr-8">___ violations</td><td class="py-3">☐ ☐</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 4: MOBILE UX -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">04 — Mobile UX Review</h2>
+    <div class="space-y-3 text-sm">
+      {[
+        ['Viewport meta tag correct', 'width=device-width, initial-scale=1'],
+        ['Text readable without zooming', 'Minimum 16px body font on mobile'],
+        ['Tap targets ≥ 44×44px', 'Buttons, links, form inputs'],
+        ['No horizontal scroll', 'Content fits within viewport width'],
+        ['Images don\'t overflow container', 'max-width: 100% on all images'],
+        ['Forms usable on mobile', 'Correct input types (tel, email), no tiny fields'],
+        ['CTA visible above fold on mobile', 'Primary action reachable without scrolling'],
+        ['Navigation usable on mobile', 'Hamburger menu or equivalent works'],
+        ['No Flash or non-mobile-friendly embeds', 'Check for legacy code'],
+        ['Touch interactions work correctly', 'Sliders, carousels, modals'],
+      ].map(([item, note]) => (
+        <div class="flex items-start gap-4 py-2 border-b border-neutral-900">
+          <span class="text-neutral-600 mt-0.5 shrink-0">☐</span>
+          <div>
+            <p class="text-neutral-300">{item}</p>
+            <p class="text-neutral-600 text-xs mt-0.5">{note}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- SECTION 5: PRIORITIZED FIX LIST -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">05 — Prioritized Fix List</h2>
+    <p class="text-neutral-400 text-sm mb-6">After completing sections 1–4, list every failed item here ranked by impact. Fix the highest-impact items first.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-neutral-800">
+            <th class="text-left py-3 pr-4 text-neutral-500 font-medium w-8">#</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Issue</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Category</th>
+            <th class="text-left py-3 pr-8 text-neutral-500 font-medium">Impact</th>
+            <th class="text-left py-3 text-neutral-500 font-medium">Fixed?</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-900 text-neutral-600">
+          {Array.from({length: 10}, (_, i) => (
+            <tr>
+              <td class="py-3 pr-4">{i + 1}.</td>
+              <td class="py-3 pr-8">___________________</td>
+              <td class="py-3 pr-8">___________________</td>
+              <td class="py-3 pr-8">High / Med / Low</td>
+              <td class="py-3">☐</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 6: SUMMARY -->
+  <section class="mb-14">
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-6">06 — Summary & Recommendation</h2>
+    <div class="space-y-4 bg-neutral-950 border border-neutral-800 rounded p-6 text-sm font-mono">
+      <p>Overall grade: <span class="text-neutral-600">___ / 100</span></p>
+      <p>Biggest win available: <span class="text-neutral-600">_______________________________________________</span></p>
+      <p>Estimated fix time: <span class="text-neutral-600">_______________________________________________</span></p>
+      <p>Re-audit recommended: <span class="text-neutral-600">___ weeks after fixes applied</span></p>
+      <div class="pt-4 border-t border-neutral-800">
+        <p class="text-neutral-500 mb-2">Notes:</p>
+        <p class="text-neutral-700">_______________________________________________</p>
+        <p class="text-neutral-700">_______________________________________________</p>
+        <p class="text-neutral-700">_______________________________________________</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="border-neutral-800 mb-10" />
+  <p class="text-xs text-neutral-600">NetiVana · Web Audit Report Template · Thank you for your purchase. Print or save as PDF to fill out offline.</p>
+</div>
+</body>
+</html>
