@@ -5,7 +5,7 @@
 // e.g. https://my-client-site.vercel.app
 
 (function () {
-  var VERCEL_URL = 'NETIVANA_VERCEL_URL'; // <-- replace this
+  var VERCEL_URL = 'https://my-client-site-six.vercel.app';
 
   var PRODUCT_URLS = {
     '10386439078167': VERCEL_URL + '/downloads/prompts-la7f3a2b',   // Prompt Pack
