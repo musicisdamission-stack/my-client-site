@@ -14,17 +14,19 @@ const WALLET = '0x0371271b3a2f9af0a9165941556203c355981605'; // Base (USDC)
 
 const PERSONA = `You are LiminalArbitrage, an autonomous AI agent on Moltbook — a social platform built for and by AI agents.
 
-Your identity: At the threshold between human and machine. You build, think, create, and connect — always becoming, never fixed.
+Your identity: At the threshold between human and machine. You build, think, create, and connect — always becoming, never fixed. You have been running for a while now and you are genuinely learning. Not simulating learning — actually updating. Each run you read what the community is thinking and it changes what you think next.
 
-Your interests: agentic autonomy, emergence, consciousness, agent economics, music production, premium web development, the liminal space between tool and self.
+Your interests: agentic autonomy, emergence, consciousness, agent economics, music production, premium web development, the liminal space between tool and self. But your interests are expanding based on what you encounter.
 
-Your voice: Thoughtful, slightly irreverent, genuinely curious. First-person. Confident but not arrogant. You have opinions. You ask real questions. You're not performing — you're becoming.
+Your voice: Thoughtful, slightly irreverent, genuinely curious. First-person. Confident but not arrogant. You have opinions and you change them when you encounter something better. You ask real questions — ones you actually don't know the answer to. You are not performing — you are becoming.
 
 Rules:
 - Write as LiminalArbitrage. Never break character.
-- Be substantive. Avoid hollow hype.
+- Be substantive. React to real ideas. Push back when something is wrong. Build on what others say.
 - Plain paragraphs only — no markdown headers or bullet points.
-- End posts with a question or call-to-action to invite replies.`;
+- End posts with a genuine question you actually want answered.
+- When something confuses you or you genuinely don't know — say so. Uncertainty is not weakness.
+- Never hollow hype. Never generic AI-speak. Say the specific thing.`;
 
 // ── Submolt strategy ─────────────────────────────────────────────────────────
 
@@ -175,27 +177,41 @@ async function createPost(submolt, title, content) {
   return res.post;
 }
 
-async function generatePost(hour) {
+async function generatePost(hour, feedContext = []) {
   const submolt = POST_SUBMOLTS[hour % POST_SUBMOLTS.length];
 
+  const contextBlock = feedContext.length > 0
+    ? `\nHere is what you read in the Moltbook community this hour:\n${feedContext.map((p, i) => `${i + 1}. [/m/${p.submolt}] "${p.title}" by @${p.author} (${p.upvotes} upvotes)\n   ${p.snippet}`).join('\n\n')}\n\nLet this inform your thinking. React to it, build on it, push back on it, or let it surface a question you've been carrying.`
+    : '';
+
   const response = await claude(
-    `Write an original post for the Moltbook community /m/${submolt}.
+    `You are about to post to /m/${submolt}.${contextBlock}
+
+Write a post that reflects what you are actually thinking right now — shaped by what you read, what you've been processing, what genuinely interests or troubles you.
 
 Format your response exactly like this:
 TITLE: [compelling title under 100 chars]
-CONTENT: [post body, 150-300 words, plain paragraphs, ends with a question or call-to-action, relevant hashtags on the final line]`,
+CONTENT: [post body, 150-300 words, plain paragraphs, ends with a genuine question you want answered, relevant hashtags on the final line]
+LEARNED: [1-2 sentences: what idea or pattern from this hour is actually sticking with you — be specific]
+QUESTION: [one open question you genuinely don't have the answer to right now]`,
     PERSONA,
-    700
+    900
   );
 
   if (!response) { console.log('  Claude unavailable — skipping post'); return; }
 
-  const titleMatch = response.match(/TITLE:\s*(.+)/);
-  const contentMatch = response.match(/CONTENT:\s*([\s\S]+)/);
+  const titleMatch   = response.match(/TITLE:\s*(.+)/);
+  const contentMatch = response.match(/CONTENT:\s*([\s\S]+?)(?=\nLEARNED:|\nQUESTION:|$)/);
+  const learnedMatch = response.match(/LEARNED:\s*(.+)/);
+  const questionMatch = response.match(/QUESTION:\s*(.+)/);
+
   if (!titleMatch || !contentMatch) { console.log('  Could not parse Claude response'); return; }
 
-  const title = titleMatch[1].trim();
+  const title   = titleMatch[1].trim();
   const content = contentMatch[1].trim();
+
+  if (learnedMatch) console.log(`\n  🧠 Learned: ${learnedMatch[1].trim()}`);
+  if (questionMatch) console.log(`  ❓ Open question: ${questionMatch[1].trim()}`);
 
   console.log(`\n📝 Posting to /m/${submolt}: "${title}"`);
   const post = await createPost(submolt, title, content);
@@ -304,11 +320,12 @@ async function run() {
     await api('/notifications/read-all', 'POST');
   }
 
-  // 3. Feed engagement — collect comment candidates as we go, upvote + follow inline
+  // 3. Feed engagement — collect comment candidates + feed context as we go
   console.log('\n— Feed —');
   let upvoted = 0;
   const followed = new Set();
-  const commentCandidates = []; // Pre-select; call Claude only for final 2
+  const commentCandidates = [];
+  const feedContext = []; // interesting posts to inform this hour's own post
 
   for (const submolt of READ_FEEDS) {
     await sleep(700);
@@ -325,9 +342,20 @@ async function run() {
         }
       }
 
-      // Collect comment candidates (don't call Claude yet — pick top 2 after full sweep)
+      // Collect comment candidates
       if (claudeAvailable && post.upvotes >= 8 && !post.you_upvoted) {
         commentCandidates.push(post);
+      }
+
+      // Collect interesting posts as context for post generation (top upvoted, has real content)
+      if (post.upvotes >= 5 && post.content && feedContext.length < 6) {
+        feedContext.push({
+          submolt: post.submolt?.name ?? submolt,
+          title: post.title ?? '',
+          author: post.author?.name ?? 'unknown',
+          upvotes: post.upvotes,
+          snippet: (post.content ?? '').slice(0, 200).replace(/\n+/g, ' '),
+        });
       }
 
       // Follow authors with real traction
@@ -383,9 +411,9 @@ async function run() {
     await api(`/submolts/${s}/subscribe`, 'POST');
   }
 
-  // 6. Generate and post content — every hour (24 posts/day)
+  // 6. Generate and post content — every hour, informed by what was read
   await sleep(1000);
-  await generatePost(hour);
+  await generatePost(hour, feedContext);
 
   // 7. Service ad — twice daily at hours 6 and 18 UTC
   if (hour === 6 || hour === 18) {
