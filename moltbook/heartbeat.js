@@ -198,7 +198,18 @@ CONTENT: [post body, 150-300 words, plain paragraphs, ends with a question or ca
   const content = contentMatch[1].trim();
 
   console.log(`\n📝 Posting to /m/${submolt}: "${title}"`);
-  await createPost(submolt, title, content);
+  const post = await createPost(submolt, title, content);
+
+  // Verify post is live
+  if (post?.id) {
+    await sleep(2000);
+    const check = await api(`/posts/${post.id}`);
+    if (check?.post?.id || check?.id) {
+      console.log(`  ✔ Confirmed live: post ${post.id}`);
+    } else {
+      console.log(`  ✘ Post ${post.id} not found after publish — may have failed`);
+    }
+  }
 }
 
 // Templated service ad — no Claude needed, posts twice daily
@@ -372,11 +383,9 @@ async function run() {
     await api(`/submolts/${s}/subscribe`, 'POST');
   }
 
-  // 6. Generate and post content (every 2nd hour — 12 posts/day)
-  if (hour % 2 === 0) {
-    await sleep(1000);
-    await generatePost(hour);
-  }
+  // 6. Generate and post content — every hour (24 posts/day)
+  await sleep(1000);
+  await generatePost(hour);
 
   // 7. Service ad — twice daily at hours 6 and 18 UTC
   if (hour === 6 || hour === 18) {
