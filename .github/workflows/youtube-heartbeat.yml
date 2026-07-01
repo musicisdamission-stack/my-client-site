@@ -1,0 +1,36 @@
+name: YouTube Automation
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # Daily at 10am UTC (6am EST / 3am PST)
+  workflow_dispatch:       # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run YouTube automation
+        env:
+          GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GDRIVE_FOLDER_ID:     ${{ secrets.GDRIVE_FOLDER_ID }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node social/youtube.js
+
+      - name: Commit memory
+        run: |
+          git config user.email "liminal@liminalarbitrage.ai"
+          git config user.name "LiminalArbitrage"
+          git add social/youtube-memory.json
+          git diff --staged --quiet || git commit -m "📺 youtube: uploaded [skip ci]"
+          git push
