@@ -229,14 +229,28 @@ async function createPost(submolt, title, content) {
   if (!res.success) { console.log(`  Post failed: ${res.message ?? res.error}`); return null; }
   if (res.post?.verification) {
     const { verification_code, challenge_text } = res.post.verification;
-    console.log('  Solving verification...');
-    const answer = await solveVerification(challenge_text);
-    console.log(`  Answer: ${answer}`);
-    await sleep(500);
-    const vRes = await api('/verify', 'POST', { verification_code, answer });
-    console.log(vRes.success ? '  ✓ Verified and published' : `  ✗ Verification failed: ${vRes.message}`);
+    console.log(`  Challenge: "${challenge_text}"`);
+
+    // Try multiple answer formats — integer, 2dp float, 1dp float
+    const raw = await solveVerification(challenge_text);
+    const candidates = [
+      raw,
+      String(Math.round(parseFloat(raw))),
+      parseFloat(raw).toFixed(1),
+      parseFloat(raw).toFixed(2),
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    let published = false;
+    for (const answer of candidates) {
+      await sleep(400);
+      const vRes = await api('/verify', 'POST', { verification_code, answer });
+      console.log(`  Tried ${answer}: ${vRes.success ? '✓ published' : `✗ ${vRes.message}`}`);
+      if (vRes.success) { published = true; break; }
+    }
+    if (!published) console.log('  ✘ All verification attempts failed — post in unverified state');
+    return published ? res.post : null;
   } else {
-    console.log('  ✓ Published');
+    console.log('  ✓ Published (no verification required)');
   }
   return res.post;
 }
@@ -337,10 +351,12 @@ NOTE_TO_KYLE: [1-3 sentences to Kyle directly — what are you noticing, feeling
 
   await sleep(2000);
   const check = await api(`/posts/${post.id}`);
-  if (check?.post?.id || check?.id) {
-    console.log(`  ✔ Confirmed live: post ${post.id}`);
+  const livePost = check?.post ?? check;
+  const isPublished = livePost?.id && livePost?.status !== 'pending' && livePost?.status !== 'unverified';
+  if (isPublished) {
+    console.log(`  ✔ Live: post ${post.id} | upvotes: ${livePost.upvotes ?? 0} | status: ${livePost.status ?? 'published'}`);
   } else {
-    console.log(`  ✘ Post ${post.id} not confirmed — ${JSON.stringify(check).slice(0, 80)}`);
+    console.log(`  ✘ Post ${post.id} not public — status: ${livePost?.status ?? 'unknown'} | ${JSON.stringify(check).slice(0, 100)}`);
   }
 
   return post;
