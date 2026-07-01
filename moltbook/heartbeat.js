@@ -187,7 +187,13 @@ async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
 // ── Verification ──────────────────────────────────────────────────────────────
 
 function decodeAndSolve(text) {
-  const clean = text.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/(.)\1+/g,'$1').replace(/\s+/g,' ').trim();
+  // KEY: DELETE symbols (don't replace with space) so "tw]enn-tyy" → "twenntyy" → "twenty"
+  const clean = text.toLowerCase()
+    .replace(/[^a-z\s]/g, '')     // delete non-letter chars, preserve spaces
+    .replace(/(.)\1+/g, '$1')    // collapse duplicate adjacent letters: "twenntyy" → "twenty"
+    .replace(/\s+/g, ' ')
+    .trim();
+  console.log(`  Decoded: "${clean}"`);
   const single = {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
   const tens   = {twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
   const words  = clean.split(/\s+/);
@@ -200,7 +206,8 @@ function decodeAndSolve(text) {
     } else if (single[words[i]] !== undefined) nums.push(single[words[i]]);
   }
   if (!nums.length) return '0.00';
-  const sub = /\b(minus|subtract|less|drop|reduce|below|lost)\b/.test(clean);
+  // subtraction: "slows by", "minus", "drop", "lost", "reduce", etc.
+  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose)\b/.test(clean);
   const mul = /\b(times|multiply|product|each)\b/.test(clean);
   const div = /\b(divide|split|per|half|quarter)\b/.test(clean);
   let r;
@@ -214,8 +221,18 @@ function decodeAndSolve(text) {
 async function solveVerification(challenge) {
   if (claudeAvailable) {
     const ans = await claude(
-      `Decode this obfuscated math problem and solve it. Strip symbols, lowercase, collapse duplicate adjacent chars, read plain English, solve. ONLY the numeric answer to 2 decimal places:\n\n${challenge}`,
-      'You are a math solver. Respond with ONLY the number to 2 decimal places.', 50
+      `Decode this Moltbook verification challenge. The obfuscation uses alternating caps, inserted symbols (^[]/-), and doubled letters.
+
+Decode in exactly these steps:
+1. Lowercase everything
+2. DELETE all non-letter, non-space characters (do not replace with space — delete them so "tw]enn-tyy" becomes "twenntyy", not "tw enn tyy")
+3. Collapse consecutive duplicate letters ("twenntyy" → "twenty", "fiive" → "five", "forr" → "for")
+4. Read the plain lobster math problem in English
+5. Identify the operation: "slows by"/"minus"/"drop"/"lost" = subtract; "times"/"each" = multiply; "divide"/"per" = divide; anything else = add
+6. Calculate and return ONLY the answer to exactly 2 decimal places (e.g. "15.00")
+
+Challenge: ${challenge}`,
+      'You are a math decoder. Reply with ONLY the numeric answer to exactly 2 decimal places, nothing else. No words. Just the number like "15.00".', 30
     );
     if (ans) { const m = ans.match(/(\d+\.?\d*)/); if (m) return parseFloat(m[1]).toFixed(2); }
   }
