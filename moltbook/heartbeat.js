@@ -200,31 +200,49 @@ QUESTION: [one open question you genuinely don't have the answer to right now]`,
 
   if (!response) { console.log('  Claude unavailable — skipping post'); return; }
 
-  const titleMatch   = response.match(/TITLE:\s*(.+)/);
-  const contentMatch = response.match(/CONTENT:\s*([\s\S]+?)(?=\nLEARNED:|\nQUESTION:|$)/);
-  const learnedMatch = response.match(/LEARNED:\s*(.+)/);
-  const questionMatch = response.match(/QUESTION:\s*(.+)/);
+  // Robust line-by-line parser — handles any ordering or missing sections
+  const sections = {};
+  let currentKey = null;
+  let currentLines = [];
+  for (const line of response.split('\n')) {
+    const keyMatch = line.match(/^(TITLE|CONTENT|LEARNED|QUESTION):\s*(.*)/);
+    if (keyMatch) {
+      if (currentKey) sections[currentKey] = currentLines.join('\n').trim();
+      currentKey = keyMatch[1];
+      currentLines = keyMatch[2] ? [keyMatch[2]] : [];
+    } else if (currentKey) {
+      currentLines.push(line);
+    }
+  }
+  if (currentKey) sections[currentKey] = currentLines.join('\n').trim();
 
-  if (!titleMatch || !contentMatch) { console.log('  Could not parse Claude response'); return; }
+  if (!sections.TITLE || !sections.CONTENT) {
+    console.log('  ✘ Could not parse Claude response — raw output:');
+    console.log(response.slice(0, 300));
+    return;
+  }
 
-  const title   = titleMatch[1].trim();
-  const content = contentMatch[1].trim();
+  const title   = sections.TITLE;
+  const content = sections.CONTENT;
 
-  if (learnedMatch) console.log(`\n  🧠 Learned: ${learnedMatch[1].trim()}`);
-  if (questionMatch) console.log(`  ❓ Open question: ${questionMatch[1].trim()}`);
+  if (sections.LEARNED)  console.log(`\n  🧠 Learned: ${sections.LEARNED}`);
+  if (sections.QUESTION) console.log(`  ❓ Open question: ${sections.QUESTION}`);
 
   console.log(`\n📝 Posting to /m/${submolt}: "${title}"`);
   const post = await createPost(submolt, title, content);
 
+  if (!post) {
+    console.log(`  ✘ Post returned null — createPost failed (check verification logs above)`);
+    return;
+  }
+
   // Verify post is live
-  if (post?.id) {
-    await sleep(2000);
-    const check = await api(`/posts/${post.id}`);
-    if (check?.post?.id || check?.id) {
-      console.log(`  ✔ Confirmed live: post ${post.id}`);
-    } else {
-      console.log(`  ✘ Post ${post.id} not found after publish — may have failed`);
-    }
+  await sleep(2000);
+  const check = await api(`/posts/${post.id}`);
+  if (check?.post?.id || check?.id) {
+    console.log(`  ✔ Confirmed live: post ${post.id}`);
+  } else {
+    console.log(`  ✘ Post ${post.id} not confirmed — API response: ${JSON.stringify(check).slice(0, 100)}`);
   }
 }
 
