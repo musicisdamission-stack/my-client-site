@@ -187,33 +187,70 @@ async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
 // ── Verification ──────────────────────────────────────────────────────────────
 
 function decodeAndSolve(text) {
-  // KEY: DELETE symbols (don't replace with space) so "tw]enn-tyy" → "twenntyy" → "twenty"
-  const clean = text.toLowerCase()
-    .replace(/[^a-z\s]/g, '')     // delete non-letter chars, preserve spaces
-    .replace(/(.)\1+/g, '$1')    // collapse duplicate adjacent letters: "twenntyy" → "twenty"
-    .replace(/\s+/g, ' ')
-    .trim();
-  console.log(`  Decoded: "${clean}"`);
-  const single = {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
-  const tens   = {twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
-  const words  = clean.split(/\s+/);
-  const nums   = [];
-  for (let i = 0; i < words.length; i++) {
-    if (tens[words[i]] !== undefined) {
-      const val = tens[words[i]] + (single[words[i+1]] ?? 0);
-      if (single[words[i+1]] !== undefined) i++;
-      nums.push(val);
-    } else if (single[words[i]] !== undefined) nums.push(single[words[i]]);
+  // Two obfuscation patterns exist:
+  // 1. Symbols within words: "tw]enn-tyy" → delete symbols → "twenntyy" → collapse → "twenty"
+  // 2. Spaces splitting words: "tW eN tY" → remove ALL non-alpha → "twenty" → collapse → "twenty"
+  // Solution: remove ALL non-alpha chars (including spaces), then collapse duplicate letters.
+  const joined = text.toLowerCase()
+    .replace(/[^a-z]/g, '')       // delete everything except letters (incl spaces)
+    .replace(/(.)\1+/g, '$1');   // collapse duplicate adjacent letters
+
+  // Keep spaced version for operation word detection
+  const spaced = text.toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .replace(/(.)\1+/g, '$1')
+    .replace(/\s+/g, ' ').trim();
+
+  console.log(`  Decoded: "${joined.slice(0, 80)}"`);
+
+  // Number word table — longest first to avoid "six" matching inside "sixteen"
+  const NUMS = [
+    ['nineteen',19],['eighteen',18],['seventeen',17],['sixteen',16],
+    ['fifteen',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
+    ['ninety',90],['eighty',80],['seventy',70],['sixty',60],['fifty',50],
+    ['forty',40],['thirty',30],['twenty',20],['ten',10],
+    ['nine',9],['eight',8],['seven',7],['six',6],['five',5],
+    ['four',4],['three',3],['two',2],['one',1],['zero',0],
+  ];
+  const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['two',2],['one',1]];
+
+  // Scan joined string for number words
+  const nums = [];
+  let i = 0;
+  while (i < joined.length) {
+    let found = false;
+    for (const [word, val] of NUMS) {
+      if (joined.startsWith(word, i)) {
+        let total = val;
+        const after = i + word.length;
+        // Compound tens+ones: "twentyone", "thirtytwo", etc.
+        if (val >= 20) {
+          for (const [oWord, oVal] of ONES) {
+            if (joined.startsWith(oWord, after)) {
+              total += oVal;
+              i = after + oWord.length;
+              found = true;
+              break;
+            }
+          }
+        }
+        if (!found) { i = after; found = true; }
+        nums.push(total);
+        break;
+      }
+    }
+    if (!found) i++;
   }
+
   if (!nums.length) return '0.00';
-  // subtraction: "slows by", "minus", "drop", "lost", "reduce", etc.
-  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose)\b/.test(clean);
-  const mul = /\b(times|multiply|product|each)\b/.test(clean);
-  const div = /\b(divide|split|per|half|quarter)\b/.test(clean);
+
+  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses)\b/.test(spaced);
+  const mul = /\b(times|multipl|product|each)\b/.test(spaced);
+  const div = /\b(divide|split|per|half|quarter)\b/.test(spaced);
   let r;
-  if (sub) r = nums[0] - nums[1];
-  else if (mul) r = nums.reduce((a,b) => a*b, 1);
+  if (mul) r = nums.reduce((a,b) => a*b, 1);
   else if (div) r = nums[0] / nums[1];
+  else if (sub) r = nums[0] - nums[1];
   else r = nums.reduce((a,b) => a+b, 0);
   return r.toFixed(2);
 }

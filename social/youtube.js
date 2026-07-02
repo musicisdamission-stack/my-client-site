@@ -11,6 +11,7 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 const FOLDER_ID     = process.env.GDRIVE_FOLDER_ID;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const FAL_KEY       = process.env.FAL_API_KEY;       // fal.ai for thumbnail generation
 
 const MEMORY_FILE   = 'social/youtube-memory.json';
 
@@ -108,6 +109,92 @@ TAGS: [12 comma-separated tags, mix of broad and specific]`,
   const tags        = tagsRaw.split(',').map(t => t.trim()).filter(Boolean).slice(0, 15);
 
   return { title, description, tags };
+}
+
+// ── Thumbnail generation ──────────────────────────────────────────────────────
+
+async function generateThumbnailPrompt(title, description) {
+  if (!ANTHROPIC_KEY) return null;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      system:     'You write image generation prompts for viral YouTube thumbnails. Be specific and visual.',
+      messages: [{
+        role:    'user',
+        content: `Write a Fal.ai image prompt for a YouTube thumbnail for this video:
+Title: "${title}"
+Topic: "${description.slice(0, 200)}"
+
+Requirements: bold large text overlay showing the title, high contrast colors, dramatic lighting,
+professional photography or cinematic style, eye-catching, 16:9 landscape format.
+Style: dark background with bright accent colors (electric blue, gold, or neon),
+photorealistic or hyper-detailed illustration.
+
+Respond with ONLY the image prompt, nothing else.`,
+      }],
+    }),
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim() ?? null;
+}
+
+async function generateThumbnail(title, description) {
+  if (!FAL_KEY) { console.log('  ⚠ No FAL_API_KEY — skipping thumbnail'); return null; }
+
+  const prompt = await generateThumbnailPrompt(title, description);
+  if (!prompt) return null;
+
+  console.log('  Generating thumbnail...');
+  try {
+    const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
+      method:  'POST',
+      headers: {
+        'Authorization': `Key ${FAL_KEY}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        image_size:    'landscape_16_9',  // 1280×720 — perfect for YouTube
+        num_images:    1,
+        output_format: 'jpeg',
+        num_inference_steps: 4,
+      }),
+    });
+    const data = await res.json();
+    const imageUrl = data.images?.[0]?.url;
+    if (!imageUrl) { console.log('  ⚠ Thumbnail generation failed'); return null; }
+
+    // Download the image
+    const imgRes = await fetch(imageUrl);
+    return Buffer.from(await imgRes.arrayBuffer());
+  } catch (err) {
+    console.log(`  ⚠ Thumbnail error: ${err.message}`);
+    return null;
+  }
+}
+
+async function setThumbnail(token, videoId, imageBuffer) {
+  const res = await fetch(
+    `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${videoId}&uploadType=media`,
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'image/jpeg',
+      },
+      body: imageBuffer,
+    }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data;
 }
 
 // ── YouTube upload ────────────────────────────────────────────────────────────
@@ -210,7 +297,19 @@ async function run() {
       const result = await uploadToYouTube(token, tmpPath, metadata);
 
       const videoUrl = `https://youtube.com/watch?v=${result.id}`;
-      console.log(`  ✓ Live: ${videoUrl}\n`);
+      console.log(`  ✓ Live: ${videoUrl}`);
+
+      // Generate and set viral thumbnail
+      const thumbBuffer = await generateThumbnail(metadata.title, metadata.description);
+      if (thumbBuffer) {
+        try {
+          await setThumbnail(token, result.id, thumbBuffer);
+          console.log('  ✓ Thumbnail set');
+        } catch (e) {
+          console.log(`  ⚠ Thumbnail failed: ${e.message}`);
+        }
+      }
+      console.log();
 
       memory.uploadedIds.push(file.id);
       memory.uploads.push({
