@@ -208,16 +208,16 @@ function decodeAndSolve(text) {
   console.log(`  Decoded: "${joined.slice(0, 80)}"`);
 
   // Number word table — longest first to avoid "six" matching inside "sixteen"
-  // Include collapsed variants: "fifteen"→"fiften" (ee→e after dedup), etc.
+  // Collapsed variants for words with 'ee': three→thre, fifteen→fiften, eighteen→eighten, nineteen→nineten
   const NUMS = [
-    ['nineteen',19],['eighteen',18],['seventeen',17],['sixteen',16],
+    ['nineteen',19],['nineten',19],['eighteen',18],['eighten',18],['seventeen',17],['sixteen',16],
     ['fifteen',15],['fiften',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
     ['ninety',90],['eighty',80],['seventy',70],['sixty',60],['fifty',50],
     ['forty',40],['thirty',30],['twenty',20],['ten',10],
     ['nine',9],['eight',8],['seven',7],['six',6],['five',5],
-    ['four',4],['three',3],['two',2],['one',1],['zero',0],
+    ['four',4],['three',3],['thre',3],['two',2],['one',1],['zero',0],
   ];
-  const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['two',2],['one',1]];
+  const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['thre',3],['two',2],['one',1]];
 
   // Object-counting patterns: "one claw", "two lobsters", etc. — not math operands
   // We skip a number word if it's immediately followed by an object noun in the joined string
@@ -299,11 +299,17 @@ Reason briefly (1-2 lines), then end with: ##ANSWER: XX.XX`,
     300
   );
   if (!response) return null;
-  const m = response.match(/##ANSWER:\s*(\d+\.?\d*)/);
-  if (m) return parseFloat(m[1]).toFixed(2);
-  // fallback: last number in response
-  const nums = [...response.matchAll(/(\d+\.?\d*)/g)];
-  return nums.length ? parseFloat(nums.at(-1)[1]).toFixed(2) : null;
+  console.log(`  Claude raw: "${response.slice(0,120)}"`);
+  // Try structured marker first
+  const markerMatch = response.match(/##ANSWER:\s*(\d+\.?\d*)/);
+  if (markerMatch) return parseFloat(markerMatch[1]).toFixed(2);
+  // Try "= XX.XX" or "equals XX" at end of response
+  const equalsMatch = response.match(/[=:]\s*(\d+\.?\d*)\s*\.?\s*$/m);
+  if (equalsMatch) return parseFloat(equalsMatch[1]).toFixed(2);
+  // Last resort: largest number in response (likely the answer, not a sub-value)
+  const allNums = [...response.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => parseFloat(m[1]));
+  if (!allNums.length) return null;
+  return Math.max(...allNums).toFixed(2);
 }
 
 // ── Posting ───────────────────────────────────────────────────────────────────
