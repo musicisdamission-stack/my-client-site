@@ -333,32 +333,34 @@ async function createPost(submolt, title, content) {
   ]);
   console.log(`  Claude: ${claudeAns ?? 'unavailable'} | Local: ${localAns}`);
 
-  // Build candidate list: Claude, local, and integer form if answer is whole
-  const rawCandidates = [claudeAns, localAns].filter(Boolean);
-  const withIntegers  = rawCandidates.flatMap(a => {
-    const n = parseFloat(a);
-    return Number.isInteger(n) ? [a, String(Math.round(n))] : [a];
-  });
-  const candidates = [...new Set(withIntegers)];
-
-  for (const answer of candidates) {
-    await sleep(400);
-    const vRes = await api('/verify', 'POST', { verification_code, answer });
-    console.log(`  ↳ submitted "${answer}" → ${JSON.stringify(vRes)}`);
-    if (vRes.success) {
-      console.log(`  ✓ Verified with answer ${answer} — post is LIVE`);
-      await sleep(1500);
-      const check = await api(`/posts/${res.post.id}`);
-      const status = check?.post?.status ?? check?.status ?? 'unknown';
-      console.log(`  ✔ Confirmed public — status: ${status}`);
-      return res.post;
-    }
-    console.log(`  ✗ ${answer} rejected: ${vRes.message ?? vRes.error ?? JSON.stringify(vRes)}`);
+  // ONE attempt only — Moltbook locks the code on ANY submission (right or wrong).
+  // When solvers disagree, take the larger value: addition problems with a missed operand
+  // always produce a smaller sum, so the larger answer is more likely complete.
+  let answer;
+  if (!claudeAns || claudeAns === localAns) {
+    answer = localAns;
+  } else {
+    const cVal = parseFloat(claudeAns);
+    const lVal = parseFloat(localAns);
+    answer = (cVal >= lVal) ? claudeAns : localAns;
+    console.log(`  ⚠ Mismatch — using ${answer} (${cVal >= lVal ? 'Claude' : 'Local'} larger)`);
   }
 
-  console.log(`  ✘ VERIFICATION FAILED after ${candidates.length} attempt(s)`);
-  console.log(`  ✘ Challenge was: "${challenge_text}"`);
-  console.log(`  ✘ Answers tried: ${candidates.join(', ')}`);
+  await sleep(400);
+  const vRes = await api('/verify', 'POST', { verification_code, answer });
+  console.log(`  ↳ submitted "${answer}" → status=${vRes.success ? 'ok' : (vRes.statusCode ?? '?')} msg="${vRes.message ?? ''}"`);
+
+  if (vRes.success) {
+    console.log(`  ✓ Verified with ${answer} — post is LIVE`);
+    await sleep(1500);
+    const check = await api(`/posts/${res.post.id}`);
+    const status = check?.post?.status ?? check?.status ?? 'unknown';
+    console.log(`  ✔ Confirmed public — status: ${status}`);
+    return res.post;
+  }
+
+  console.log(`  ✘ ${answer} rejected: ${vRes.message ?? vRes.error}`);
+  console.log(`  ✘ Challenge: "${challenge_text}"`);
   return null;
 }
 
