@@ -1,0 +1,49 @@
+name: LiminalArbitrage Post Series
+
+on:
+  workflow_dispatch:
+    inputs:
+      series:
+        description: 'Series name to post (e.g. screensaver)'
+        required: true
+        default: 'screensaver'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  post-series:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Post series
+        env:
+          MOLTBOOK_API_KEY:  ${{ secrets.MOLTBOOK_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SERIES: ${{ inputs.series }}
+        run: node moltbook/post-series.js
+
+      - name: Commit and push memory
+        run: |
+          git config user.email "liminal@liminalarbitrage.ai"
+          git config user.name "LiminalArbitrage"
+          git add moltbook/memory.json
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "📚 series: ${{ inputs.series }} posted [skip ci]"
+          for attempt in 1 2 3; do
+            echo "Push attempt $attempt..."
+            git fetch origin main
+            git rebase origin/main && git push origin main && echo "Push succeeded" && exit 0
+            echo "Push rejected — retrying after rebase..."
+            sleep $((attempt * 3))
+          done
+          echo "All push attempts failed"
+          exit 1

@@ -124,14 +124,14 @@ function decodeAndSolve(text) {
   const spaced = text.toLowerCase().replace(/[^a-z\s]/g, '').replace(/(.)\1+/g, '$1').replace(/\s+/g, ' ').trim();
 
   const NUMS = [
-    ['nineteen',19],['eighteen',18],['seventeen',17],['sixteen',16],
-    ['fifteen',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
+    ['nineteen',19],['nineten',19],['eighteen',18],['eighten',18],['seventeen',17],['sixteen',16],
+    ['fifteen',15],['fiften',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
     ['ninety',90],['eighty',80],['seventy',70],['sixty',60],['fifty',50],
     ['forty',40],['thirty',30],['twenty',20],['ten',10],
     ['nine',9],['eight',8],['seven',7],['six',6],['five',5],
-    ['four',4],['three',3],['two',2],['one',1],['zero',0],
+    ['four',4],['three',3],['thre',3],['two',2],['one',1],['zero',0],
   ];
-  const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['two',2],['one',1]];
+  const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['thre',3],['two',2],['one',1]];
 
   const nums = [];
   let i = 0;
@@ -157,7 +157,7 @@ function decodeAndSolve(text) {
   if (!nums.length) return '0.00';
   const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses|difference)\b/.test(spaced);
   const mul = /\b(times|multipl|product|each)\b/.test(spaced);
-  const div = /\b(divide|split|half|quarter|quotient)\b/.test(spaced);
+  const div = /\b(divide|split|half|quarter|quotient)\b/.test(spaced);  // "per" excluded — it's a rate word, not division
   let r;
   if (div) r = nums[0] / nums[1];
   else if (mul) r = nums.reduce((a,b) => a*b, 1);
@@ -167,15 +167,21 @@ function decodeAndSolve(text) {
 }
 
 async function claudeSolveVerification(challenge) {
-  const ans = await claude(
-    `Moltbook verification challenge. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words, solve the math.
-Operations: slow/lose/drop/minus/decrease = subtract; times/multiply/each = multiply; divide/per/half = divide; default = add.
-Challenge: ${challenge}`,
-    'Reply with ONLY the answer to exactly 2 decimal places. Example: "15.00"', 20
-  );
-  if (!ans) return null;
-  const m = ans.match(/(\d+\.?\d*)/);
-  return m ? parseFloat(m[1]).toFixed(2) : null;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 300,
+      system: 'Solve the math challenge. Your last line MUST be "##ANSWER: XX.XX"',
+      messages: [{ role: 'user', content: `Moltbook verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter" = unit, NOT division. "one/two claw/lobster" = count word, NOT a math operand. Operations: lose/drop/minus/difference=subtract; times/multiply=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX` }],
+    }),
+  });
+  const data = await res.json();
+  const text = data.content?.[0]?.text?.trim() ?? '';
+  const m = text.match(/##ANSWER:\s*(\d+\.?\d*)/);
+  if (m) return parseFloat(m[1]).toFixed(2);
+  const nums = [...text.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => parseFloat(m[1]));
+  return nums.length ? Math.max(...nums).toFixed(2) : null;
 }
 
 async function postWithVerification(submolt, title, content) {
@@ -188,24 +194,24 @@ async function postWithVerification(submolt, title, content) {
   }
 
   const { verification_code, challenge_text } = res.post.verification;
-  console.log(`  Challenge: "${challenge_text}"`);
+  console.log(`  Challenge: "${challenge_text.slice(0, 80)}"`);
 
   const [claudeAns, localAns] = await Promise.all([
     claudeSolveVerification(challenge_text),
     Promise.resolve(decodeAndSolve(challenge_text)),
   ]);
-  console.log(`  Claude: ${claudeAns ?? 'unavailable'} | Local: ${localAns}`);
 
-  for (const answer of [...new Set([claudeAns, localAns].filter(Boolean))]) {
-    await sleep(400);
-    const vRes = await api('/verify', 'POST', { verification_code, answer });
-    if (vRes.success) {
-      console.log(`  ✓ Verified with ${answer}`);
-      return res.post;
-    }
-    console.log(`  ✗ ${answer} rejected`);
-  }
-  console.log('  ✘ Verification failed');
+  // Single attempt only — Moltbook locks the code after any submission.
+  // Pick the larger of the two answers (addition bias: missing operand = smaller sum).
+  const answer = (!claudeAns || claudeAns === localAns)
+    ? localAns
+    : (parseFloat(claudeAns) >= parseFloat(localAns) ? claudeAns : localAns);
+  console.log(`  Claude: ${claudeAns ?? 'n/a'} | Local: ${localAns} → submitting: ${answer}`);
+
+  await sleep(400);
+  const vRes = await api('/verify', 'POST', { verification_code, answer });
+  if (vRes.success) { console.log(`  ✓ Verified (${answer}) — LIVE`); return res.post; }
+  console.log(`  ✗ ${answer} rejected: ${vRes.message}`);
   return null;
 }
 
