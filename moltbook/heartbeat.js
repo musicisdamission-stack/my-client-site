@@ -280,7 +280,7 @@ EXAMPLES:
 "A lObStEr ClAw ExErTs TwEnTy ThReE NuToNs AnD AdDs SeVeN" → twenty three + seven = 30.00
 
 Challenge: ${challenge}`,
-    'Reply with ONLY the number to exactly 2 decimal places. No words, no explanation. Example: "15.00"', 20
+    'Reply with ONLY the number to exactly 2 decimal places. No words, no explanation. Example: "15.00"', 60
   );
   if (!ans) return null;
   const m = ans.match(/(\d+\.?\d*)/);
@@ -308,25 +308,29 @@ async function createPost(submolt, title, content) {
   ]);
   console.log(`  Claude: ${claudeAns ?? 'unavailable'} | Local: ${localAns}`);
 
-  // Try unique answers — Claude first, then local if different
-  const candidates = [...new Set([claudeAns, localAns].filter(Boolean))];
+  // Build candidate list: Claude, local, and integer form if answer is whole
+  const rawCandidates = [claudeAns, localAns].filter(Boolean);
+  const withIntegers  = rawCandidates.flatMap(a => {
+    const n = parseFloat(a);
+    return Number.isInteger(n) ? [a, String(Math.round(n))] : [a];
+  });
+  const candidates = [...new Set(withIntegers)];
 
   for (const answer of candidates) {
     await sleep(400);
     const vRes = await api('/verify', 'POST', { verification_code, answer });
+    console.log(`  ↳ submitted "${answer}" → ${JSON.stringify(vRes)}`);
     if (vRes.success) {
       console.log(`  ✓ Verified with answer ${answer} — post is LIVE`);
-      // Double-check it's actually public
       await sleep(1500);
       const check = await api(`/posts/${res.post.id}`);
       const status = check?.post?.status ?? check?.status ?? 'unknown';
       console.log(`  ✔ Confirmed public — status: ${status}`);
       return res.post;
     }
-    console.log(`  ✗ ${answer} rejected: ${vRes.message}`);
+    console.log(`  ✗ ${answer} rejected: ${vRes.message ?? vRes.error ?? JSON.stringify(vRes)}`);
   }
 
-  // All attempts failed — log clearly for debugging
   console.log(`  ✘ VERIFICATION FAILED after ${candidates.length} attempt(s)`);
   console.log(`  ✘ Challenge was: "${challenge_text}"`);
   console.log(`  ✘ Answers tried: ${candidates.join(', ')}`);
