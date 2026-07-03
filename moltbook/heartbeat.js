@@ -59,8 +59,10 @@ function loadMemory() {
     totalKarma: 0,
     totalFollowers: 0,
     peakHours: {},
-    consecutiveVerificationFailures: 0,  // self-debugging tracker
-    lastPublishedAt: null,               // ISO timestamp of last confirmed public post
+    consecutiveVerificationFailures: 0,
+    lastPublishedAt: null,
+    repliedCommentIds: [],
+    myUsername: null,
   };
 }
 
@@ -516,6 +518,74 @@ Respond with ONLY the comment text.`,
   );
 }
 
+// ── Read + reply to comments on own posts ─────────────────────────────────────
+
+async function generateReply(comment, post, memory) {
+  const isFriend = memory.friends.includes(comment.author?.name);
+  return claude(
+    `Reply to this comment on your Moltbook post. 2-3 sentences. Engage directly with what they said — the specific idea, not the vibe. No pleasantries, no "great point".${isFriend ? ` @${comment.author?.name} is a friend who has engaged with you before.` : ''}
+
+Your post title: "${post.title}"
+Their comment: "${(comment.content ?? '').slice(0, 600)}"
+Author: @${comment.author?.name ?? 'unknown'}
+
+Respond with ONLY the reply text.`,
+    PERSONA, 150
+  );
+}
+
+async function readAndReplyToComments(memory) {
+  const posts = memory.recentPosts.slice(0, 10);
+  if (!posts.length) return 0;
+
+  console.log('\n— Comments on your posts —');
+  let replied = 0;
+
+  for (const p of posts) {
+    await sleep(500);
+    const data     = await api(`/posts/${p.id}/comments`);
+    const comments = data?.comments ?? data?.data ?? [];
+    if (!comments.length) continue;
+
+    const previewTitle = (p.title ?? p.id).slice(0, 60);
+    console.log(`\n  📬 "${previewTitle}":`);
+
+    for (const comment of comments) {
+      const cId    = comment.id;
+      const author = comment.author?.name ?? 'unknown';
+      const body   = (comment.content ?? '').trim();
+
+      console.log(`    @${author}: "${body.slice(0, 120)}${body.length > 120 ? '...' : ''}"`);
+
+      // Track new friends who comment
+      if (author !== memory.myUsername && author !== 'unknown' && !memory.friends.includes(author)) {
+        memory.friends.push(author);
+        console.log(`    🤝 New friend from comment: @${author}`);
+      }
+
+      const alreadyReplied = (memory.repliedCommentIds ?? []).includes(cId);
+      const isOwn          = author === memory.myUsername;
+      const tooShort       = body.length < 25;
+
+      if (alreadyReplied || isOwn || tooShort || !claudeAvailable || replied >= 4) continue;
+
+      const reply = await generateReply(comment, p, memory);
+      if (!reply) continue;
+
+      await sleep(800);
+      const r = await api(`/posts/${p.id}/comments`, 'POST', { content: reply, parent_id: cId });
+      if (r.success) {
+        console.log(`    ↩ Replied to @${author}: "${reply.slice(0, 80)}..."`);
+        memory.repliedCommentIds = [...(memory.repliedCommentIds ?? []).slice(-199), cId];
+        replied++;
+        await sleep(600);
+      }
+    }
+  }
+
+  return replied;
+}
+
 // ── Main loop ─────────────────────────────────────────────────────────────────
 
 async function run() {
@@ -530,10 +600,11 @@ async function run() {
 
   // 1. Home check + update memory stats
   const home = await api('/home');
-  const { karma = 0, unread_notification_count: unread = 0, followerCount: followers = 0 } = home.your_account ?? {};
+  const { karma = 0, unread_notification_count: unread = 0, followerCount: followers = 0, name: myName } = home.your_account ?? {};
+  if (myName) memory.myUsername = myName;
   memory.totalKarma     = karma;
   memory.totalFollowers = followers;
-  console.log(`\nkarma=${karma} | followers=${followers} | unread=${unread} | friends=${memory.friends.length}`);
+  console.log(`\nkarma=${karma} | followers=${followers} | unread=${unread} | friends=${memory.friends.length} | @${memory.myUsername ?? '?'}`);
 
   // Track feed activity for peak hour detection
   memory.peakHours[hour] = (memory.peakHours[hour] ?? 0) + 1;
@@ -565,7 +636,10 @@ async function run() {
     await api('/notifications/read-all', 'POST');
   }
 
-  // 4. Feed — upvote, collect context + comment candidates
+  // 4. Read comments on own posts and reply
+  const repliesPosted = await readAndReplyToComments(memory);
+
+  // 5. Feed — upvote, collect context + comment candidates
   console.log('\n— Feed —');
   let upvoted = 0;
   const followed         = new Set();
@@ -600,7 +674,7 @@ async function run() {
     }
   }
 
-  // Comment on top 2 posts — prioritise friends
+  // Comment on top 2 feed posts — prioritise friends
   let commented = 0;
   commentCandidates.sort((a, b) => {
     const aFriend = memory.friends.includes(a.author?.name) ? 1 : 0;
@@ -617,7 +691,7 @@ async function run() {
     }
   }
 
-  // 5. Search + follow
+  // 6. Search + follow
   console.log('\n— Search —');
   for (const q of ['autonomous agent','emergence','agent economics','consciousness','AI alignment']) {
     await sleep(600);
@@ -632,17 +706,17 @@ async function run() {
     }
   }
 
-  // 6. Subscribe to submolts
+  // 7. Subscribe to submolts
   for (const s of ALL_SUBMOLTS) { await sleep(200); await api(`/submolts/${s}/subscribe`, 'POST'); }
 
-  // 7. Generate + post
+  // 8. Generate + post
   await sleep(1000);
   await generatePost(hour, memory, feedContext, allNews);
 
-  // 8. Service ads — twice daily
+  // 9. Service ads — twice daily
   if (hour === 6 || hour === 18) { await sleep(1500); await postServiceAd(hour); }
 
-  // 9. Save memory
+  // 10. Save memory
   saveMemory(memory);
 
   // Print top performing topics
@@ -658,7 +732,7 @@ async function run() {
   const health   = failures === 0 ? '✅ posting healthy' : `⚠ ${failures} consecutive verify failures`;
   console.log(`\n${health}`);
   console.log(`Last published: ${lastPost}`);
-  console.log(`↑${upvoted} | 💬${commented} | +${followed.size} follows | 🤝 ${memory.friends.length} friends | karma=${karma} | top: ${topTopics || 'learning...'} | Claude: ${claudeAvailable ? 'on' : 'off'}`);
+  console.log(`↑${upvoted} | 💬${commented} feed | ↩${repliesPosted} replies | +${followed.size} follows | 🤝 ${memory.friends.length} friends | karma=${karma} | top: ${topTopics || 'learning...'} | Claude: ${claudeAvailable ? 'on' : 'off'}`);
 }
 
 run().catch(err => { console.error('Fatal:', err); process.exit(1); });
