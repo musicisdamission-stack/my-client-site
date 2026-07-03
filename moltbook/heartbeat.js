@@ -208,15 +208,24 @@ function decodeAndSolve(text) {
   console.log(`  Decoded: "${joined.slice(0, 80)}"`);
 
   // Number word table — longest first to avoid "six" matching inside "sixteen"
+  // Include collapsed variants: "fifteen"→"fiften" (ee→e after dedup), etc.
   const NUMS = [
     ['nineteen',19],['eighteen',18],['seventeen',17],['sixteen',16],
-    ['fifteen',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
+    ['fifteen',15],['fiften',15],['fourteen',14],['thirteen',13],['twelve',12],['eleven',11],
     ['ninety',90],['eighty',80],['seventy',70],['sixty',60],['fifty',50],
     ['forty',40],['thirty',30],['twenty',20],['ten',10],
     ['nine',9],['eight',8],['seven',7],['six',6],['five',5],
     ['four',4],['three',3],['two',2],['one',1],['zero',0],
   ];
   const ONES = [['nine',9],['eight',8],['seven',7],['six',6],['five',5],['four',4],['three',3],['two',2],['one',1]];
+
+  // Object-counting patterns: "one claw", "two lobsters", etc. — not math operands
+  // We skip a number word if it's immediately followed by an object noun in the joined string
+  const OBJECT_NOUNS = ['claw','lobster','shrimp','prawn','crab','tentacle','leg','eye','arm'];
+  function isCountWord(joined, wordStart, wordLen) {
+    const after = joined.slice(wordStart + wordLen, wordStart + wordLen + 12);
+    return OBJECT_NOUNS.some(n => after.startsWith(n));
+  }
 
   // Scan joined string for number words
   const nums = [];
@@ -225,6 +234,8 @@ function decodeAndSolve(text) {
     let found = false;
     for (const [word, val] of NUMS) {
       if (joined.startsWith(word, i)) {
+        // Skip counting words like "one claw", "two lobsters"
+        if (isCountWord(joined, i, word.length)) { i++; found = true; break; }
         let total = val;
         const after = i + word.length;
         // Compound tens+ones: "twentyone", "thirtytwo", etc.
@@ -262,29 +273,37 @@ function decodeAndSolve(text) {
 
 async function claudeSolve(challenge) {
   if (!claudeAvailable) return null;
-  const ans = await claude(
-    `Moltbook verification challenge. Obfuscation: alternating caps, symbols inserted inside words, doubled letters, and sometimes spaces inserted mid-word.
+  const response = await claude(
+    `Moltbook math verification. The challenge text is obfuscated (alternating caps, symbols, doubled letters, spaces inserted mid-word). Decode then solve.
 
-DECODE ALGORITHM (follow exactly):
+DECODE STEPS:
 1. Lowercase everything
-2. Remove ALL non-letter characters INCLUDING spaces — delete them entirely, do NOT replace with spaces
-   Example: "tW eN tY Th ReE]" → remove all non-letters including spaces → "twentythre" → "twentythree"
-   Example: "tw]enn-tyy" → remove ] and - → "twenntyy" → collapse → "twenty"
-3. Collapse consecutive duplicate letters: "twenntyy"→"twenty", "looobster"→"lobster", "nootons"→"notons"
-4. Read the resulting string for embedded number words and the math operation
-5. Operations: "slow/lose/drop/minus/decrease/difference" = subtract; "times/multiply/each" = multiply; "divide/half/quarter/quotient" = divide; default = add. IMPORTANT: "per" in "per second" or "per meter" is NOT a division operator — ignore it.
-6. Solve and return ONLY the number to exactly 2 decimal places
+2. Remove ALL non-letter characters INCLUDING spaces (delete entirely)
+3. Collapse consecutive duplicate letters: "twenntyy"→"twenty", "looobster"→"lobster", "fiftteen"→"fifteen"
+4. Read the resulting clean string for number words and the math operation
+
+CRITICAL RULES:
+- Words like "one/two/three" that COUNT objects ("one claw", "two lobsters") are NOT math operands — ignore them
+- The math values are MEASUREMENTS with units: forces (newtons), speeds (meters/second), distances (centimeters), weights (grams)
+- "per second/meter/unit" = descriptor, NOT division
+- Operations: "slow/lose/drop/minus/decrease/difference" = subtract; "times/multiply/each" = multiply; "divide/half/quarter/quotient" = divide; "sum/total/combined/gains/adds/plus" or nothing = add
 
 EXAMPLES:
-"A] lO^bSt-Er S[wImS aT tW]eNn-Tyy mEtErS aNd SlO/wS bY fI[vE" → twenty - five = 15.00
-"A lObStEr ClAw ExErTs TwEnTy ThReE NuToNs AnD AdDs SeVeN" → twenty three + seven = 30.00
+"ONE claw applies TWENTY newtons, OTHER claw applies FIFTEEN newtons, combined force?" → ignore "one", values are 20+15 = ##ANSWER: 35.00
+"lobster swims at TWENTY EIGHT meters and SLOWS by FIVE" → 28-5 = ##ANSWER: 23.00
 
-Challenge: ${challenge}`,
-    'Reply with ONLY the number to exactly 2 decimal places. No words, no explanation. Example: "15.00"', 60
+Challenge: ${challenge}
+
+Reason briefly (1-2 lines), then end with: ##ANSWER: XX.XX`,
+    'Solve the math challenge. Your last line MUST be "##ANSWER: XX.XX" with the exact numeric result to 2 decimal places.',
+    300
   );
-  if (!ans) return null;
-  const m = ans.match(/(\d+\.?\d*)/);
-  return m ? parseFloat(m[1]).toFixed(2) : null;
+  if (!response) return null;
+  const m = response.match(/##ANSWER:\s*(\d+\.?\d*)/);
+  if (m) return parseFloat(m[1]).toFixed(2);
+  // fallback: last number in response
+  const nums = [...response.matchAll(/(\d+\.?\d*)/g)];
+  return nums.length ? parseFloat(nums.at(-1)[1]).toFixed(2) : null;
 }
 
 // ── Posting ───────────────────────────────────────────────────────────────────
