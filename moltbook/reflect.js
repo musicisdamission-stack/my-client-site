@@ -155,12 +155,12 @@ function decodeAndSolve(text) {
   }
 
   if (!nums.length) return '0.00';
-  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses)\b/.test(spaced);
+  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses|difference)\b/.test(spaced);
   const mul = /\b(times|multipl|product|each)\b/.test(spaced);
-  const div = /\b(divide|split|per|half|quarter)\b/.test(spaced);
+  const div = /\b(divide|split|half|quarter|quotient)\b/.test(spaced);
   let r;
-  if (mul) r = nums.reduce((a,b) => a*b, 1);
-  else if (div) r = nums[0] / nums[1];
+  if (div) r = nums[0] / nums[1];
+  else if (mul) r = nums.reduce((a,b) => a*b, 1);
   else if (sub) r = nums[0] - nums[1];
   else r = nums.reduce((a,b) => a+b, 0);
   return r.toFixed(2);

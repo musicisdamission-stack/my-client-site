@@ -248,12 +248,13 @@ function decodeAndSolve(text) {
 
   if (!nums.length) return '0.00';
 
-  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses)\b/.test(spaced);
+  // "per" excluded — matches "per second" in rate descriptions, not division
+  const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses|difference)\b/.test(spaced);
   const mul = /\b(times|multipl|product|each)\b/.test(spaced);
-  const div = /\b(divide|split|per|half|quarter)\b/.test(spaced);
+  const div = /\b(divide|split|half|quarter|quotient)\b/.test(spaced);
   let r;
-  if (mul) r = nums.reduce((a,b) => a*b, 1);
-  else if (div) r = nums[0] / nums[1];
+  if (div) r = nums[0] / nums[1];
+  else if (mul) r = nums.reduce((a,b) => a*b, 1);
   else if (sub) r = nums[0] - nums[1];
   else r = nums.reduce((a,b) => a+b, 0);
   return r.toFixed(2);
@@ -271,7 +272,7 @@ DECODE ALGORITHM (follow exactly):
    Example: "tw]enn-tyy" → remove ] and - → "twenntyy" → collapse → "twenty"
 3. Collapse consecutive duplicate letters: "twenntyy"→"twenty", "looobster"→"lobster", "nootons"→"notons"
 4. Read the resulting string for embedded number words and the math operation
-5. Operations: "slow/lose/drop/minus/decrease" = subtract; "times/multiply/each" = multiply; "divide/per/half" = divide; "add/gain/plus" or nothing = add
+5. Operations: "slow/lose/drop/minus/decrease/difference" = subtract; "times/multiply/each" = multiply; "divide/half/quarter/quotient" = divide; default = add. IMPORTANT: "per" in "per second" or "per meter" is NOT a division operator — ignore it.
 6. Solve and return ONLY the number to exactly 2 decimal places
 
 EXAMPLES:
