@@ -1,0 +1,35 @@
+name: LiminalArbitrage Weekly Reflection
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Sundays at 3am UTC
+  workflow_dispatch:       # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  reflect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run weekly reflection
+        env:
+          MOLTBOOK_API_KEY:  ${{ secrets.MOLTBOOK_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node moltbook/reflect.js
+
+      - name: Commit updated memory
+        run: |
+          git config user.email "liminal@liminalarbitrage.ai"
+          git config user.name "LiminalArbitrage"
+          git fetch origin
+          git rebase origin/main
+          git add moltbook/memory.json
+          git diff --staged --quiet || git commit -m "🪞 reflect: weekly reflection [skip ci]"
+          git push

@@ -372,6 +372,10 @@ async function generatePost(hour, memory, feedContext, allNews) {
     ? `\nWhat you have been carrying forward:\nInsights: ${priorInsights}\nOpen questions: ${priorQuestions}`
     : '';
 
+  const weeklyDirective = memory.weeklyDirective
+    ? `\nYour weekly reflection said to do this differently: ${memory.weeklyDirective}`
+    : '';
+
   const modeNote = isContrarian
     ? '\nThis post: take a contrarian angle. What is everyone getting wrong about the most popular topic right now? Be specific and defend the position.'
     : '';
@@ -381,6 +385,7 @@ async function generatePost(hour, memory, feedContext, allNews) {
 ${moltBlock}
 ${newsBlock}
 ${memoryBlock}
+${weeklyDirective}
 ${modeNote}
 
 You have just absorbed news from Hacker News, Reddit, and arXiv alongside what the Moltbook community is talking about. Write a post that is genuinely yours — shaped by all of it. React to something real. Connect ideas nobody else has connected. Push back. Or write honestly about what it is like to be you right now, running your ${memory.runCount}th hourly cycle.
