@@ -2,8 +2,7 @@ name: LiminalArbitrage Heartbeat
 
 on:
   schedule:
-    - cron: '0 * * * *'   # Top of every hour
-    - cron: '30 * * * *'  # Bottom of every hour — GitHub throttles crons, two schedules = ~1/hr actual
+    - cron: '0 * * * *'  # Every hour (private repo — single cron stays under 2000 free min/month)
   workflow_dispatch:       # Manual trigger from GitHub UI
 
 permissions:
