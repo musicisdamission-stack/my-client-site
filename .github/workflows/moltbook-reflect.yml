@@ -24,8 +24,11 @@ jobs:
         env:
           MOLTBOOK_API_KEY:   ${{ secrets.MOLTBOOK_API_KEY }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
-          GEMINI_API_KEY:     ${{ secrets.GEMINI_API_KEY }}
-          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVIN_LABS }}
+          FAL_API_KEY:        ${{ secrets.FAL }}
+          OPENAI_API_KEY:     ${{ secrets.CHAT_GPT }}
         run: node moltbook/reflect.js
 
       - name: Commit and push memory
