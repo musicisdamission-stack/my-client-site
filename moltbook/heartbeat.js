@@ -284,8 +284,8 @@ async function callGemini(model, userPrompt, system, maxTokens) {
 // Convenience aliases
 const claude  = (p, s = PERSONA, t = 400) => callClaude('claude-haiku-4-5-20251001', p, s, t);
 const sonnet  = (p, s = PERSONA, t = 400) => callClaude('claude-sonnet-4-6', p, s, t);
-const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-2.5-flash', p, s, t);       // update once model list confirms 3.1 IDs
-const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-2.5-flash-lite', p, s, t); // update once model list confirms 3.1 IDs
+const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.5-flash', p, s, t);      // newest Flash — mid-tier volume work
+const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t); // Flash-Lite 3.1 — mechanical/structured tasks
 
 // HIGH: brand voice — Sonnet primary, Haiku fallback
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
@@ -436,7 +436,7 @@ async function geminiSolve(challenge) {
   if (!GEMINI_KEY) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
