@@ -1051,10 +1051,10 @@ async function run() {
     .join(', ');
 
   const failures = memory.consecutiveVerificationFailures ?? 0;
-  const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt).toUTCString() : 'never';
+  const lastPostStr = memory.lastPublishedAt ? new Date(memory.lastPublishedAt).toUTCString() : 'never';
   const health   = failures === 0 ? '✅ posting healthy' : `⚠ ${failures} consecutive verify failures`;
   console.log(`\n${health}`);
-  console.log(`Last published: ${lastPost}`);
+  console.log(`Last published: ${lastPostStr}`);
   console.log(`↑${upvoted} | 💬${commented} feed | ↩${repliesPosted} replies | +${followed.size} follows | 🤝 ${memory.friends.length} friends | karma=${karma} | top: ${topTopics || 'learning...'} | Claude: ${claudeAvailable ? 'on' : 'off'}`);
 }
 
