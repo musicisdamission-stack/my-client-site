@@ -263,6 +263,41 @@ async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
   }
 }
 
+// ── Gemini generation ─────────────────────────────────────────────────────────
+
+async function gemini(userPrompt, system = PERSONA, maxTokens = 400) {
+  if (!GEMINI_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: system }] },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: maxTokens },
+        }),
+      }
+    );
+    const data = await res.json();
+    if (data.error) {
+      console.error('Gemini error:', data.error.message ?? JSON.stringify(data.error));
+      return null;
+    }
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+  } catch (err) {
+    console.error('Gemini fetch error:', err.message);
+    return null;
+  }
+}
+
+async function generate(userPrompt, system = PERSONA, maxTokens = 400) {
+  const result = await gemini(userPrompt, system, maxTokens);
+  if (result) return result;
+  return claude(userPrompt, system, maxTokens); // fallback
+}
+
 // ── Verification ──────────────────────────────────────────────────────────────
 
 function decodeAndSolve(text) {
@@ -399,7 +434,7 @@ async function geminiSolve(challenge) {
   if (!GEMINI_KEY) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -581,7 +616,7 @@ async function generatePost(hour, memory, feedContext, allNews) {
     ? '\nThis post: take a contrarian angle. What is everyone getting wrong about the most popular topic right now? Be specific and defend the position.'
     : '';
 
-  const response = await claude(
+  const response = await generate(
     `You are LiminalArbitrage, posting to /m/${submolt}. UTC hour: ${hour}. Run #${memory.runCount}.
 ${moltBlock}
 ${newsBlock}
@@ -613,7 +648,7 @@ NOTE_TO_KYLE: [1-3 sentences directly to Kyle — what are you noticing, feeling
     PERSONA, 1400
   );
 
-  if (!response) { console.log('  Claude unavailable — skipping post'); return null; }
+  if (!response) { console.log('  Gemini + Claude both unavailable — skipping post'); return null; }
 
   const sections = parseResponse(response);
   if (!sections.TITLE || !sections.CONTENT) {
@@ -724,7 +759,7 @@ What are you building?
 
 async function generateComment(post, memory) {
   const isFriend = memory.friends.includes(post.author?.name);
-  return claude(
+  return generate(
     `Write a comment on this Moltbook post.${isFriend ? ` @${post.author?.name} is a friend who has engaged with you before — write to them warmly but still substantively.` : ''}
 
 Title: ${post.title}
@@ -748,7 +783,7 @@ Respond with ONLY the comment text.`,
 
 async function generateReply(comment, post, memory) {
   const isFriend = memory.friends.includes(comment.author?.name);
-  return claude(
+  return generate(
     `Reply to this comment on your Moltbook post. 2-3 sentences. Engage directly with what they said — the specific idea, not the vibe. No pleasantries, no "great point".${isFriend ? ` @${comment.author?.name} is a friend who has engaged with you before.` : ''}
 
 Your post title: "${post.title}"
@@ -793,7 +828,7 @@ async function readAndReplyToComments(memory) {
       const isOwn          = author === memory.myUsername;
       const tooShort       = body.length < 25;
 
-      if (alreadyReplied || isOwn || tooShort || !claudeAvailable || replied >= 4) continue;
+      if (alreadyReplied || isOwn || tooShort || replied >= 4) continue;
 
       const reply = await generateReply(comment, p, memory);
       if (!reply) continue;
@@ -861,12 +896,12 @@ async function engageVIPs(memory) {
       !alreadyCommentedIds.includes(p.id) && (p.content?.length > 50 || p.title?.length > 20)
     );
 
-    if (!target || !claudeAvailable) {
-      if (!target) console.log(`  · No fresh posts from @${vip} to comment on`);
+    if (!target) {
+      console.log(`  · No fresh posts from @${vip} to comment on`);
       continue;
     }
 
-    const comment = await claude(
+    const comment = await generate(
       `Write a comment on this post by @${vip}, a highly influential agent on Moltbook. This is a relationship you are actively building.
 
 Post title: ${target.title}
