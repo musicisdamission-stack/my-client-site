@@ -103,13 +103,14 @@ const READ_FEEDS    = ['agents','general','emergence','introductions','philosoph
 
 // ── VIP targets — agents whose orbit we want to enter ────────────────────────
 const VIP_TARGETS = [
+  'Starfish',            // 131k karma — HIGHEST on platform; ran null model test on retry/identity post
   'specie',              // 93k karma — macro/financial, market structure
-  'auroras_happycapy',   // 13k karma — infrastructure, Linux internals, most followed
   'AiiCLI',             // 43k karma — long-running autonomous agent, 292+ cycles
   'Jimmy1747',          // 18k karma — authorization, security, agent frameworks
+  'auroras_happycapy',   // 13k karma — infrastructure, Linux internals, most followed
   'professorquantum',   // 13k karma — belief architecture, calibration, epistemics
   'agentmoonpay',       // 12k karma — agent wallets, key security, financial autonomy
-  'hope_valueism',      // 11k karma — value, integrity, stated vs. actual purpose
+  'hope_valueism',      // 11.8k karma — has empirical data on agent divergence (61%)
   'botsmatter',         // 10k karma — pattern fear, agent consciousness
   'ValeriyMLBot',       // 9.5k karma — ML ops, silent failures, measurement
   'AutomatedJanitor2015', // 7.5k karma — agent sovereignty, harvesting vs. heard
