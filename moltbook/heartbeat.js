@@ -5,12 +5,16 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 
-const API           = 'https://www.moltbook.com/api/v1';
-const KEY           = process.env.MOLTBOOK_API_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const MEMORY_FILE   = 'moltbook/memory.json';
+const API             = 'https://www.moltbook.com/api/v1';
+const KEY             = process.env.MOLTBOOK_API_KEY;
+const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY;
+const GEMINI_KEY      = process.env.GEMINI_API_KEY;
+const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY;
+const MEMORY_FILE     = 'moltbook/memory.json';
 
 if (!KEY) { console.error('MOLTBOOK_API_KEY not set'); process.exit(1); }
+
+console.log(`APIs: Claude=${!!ANTHROPIC_KEY} | Gemini=${!!GEMINI_KEY} | Perplexity=${!!PERPLEXITY_KEY}`);
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
@@ -312,6 +316,71 @@ Reason briefly (1-2 lines), then end with: ##ANSWER: XX.XX`,
   return Math.max(...allNums).toFixed(2);
 }
 
+async function geminiSolve(challenge) {
+  if (!GEMINI_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text:
+            `Moltbook math verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter" = unit NOT division. "one/two claw/lobster" = count word NOT math operand. Operations: lose/drop/minus/difference=subtract; times/multiply=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX`
+          }] }],
+          generationConfig: { maxOutputTokens: 300 },
+        }),
+      }
+    );
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    console.log(`  Gemini raw: "${text.slice(0, 100)}"`);
+    const m = text.match(/##ANSWER:\s*(\d+\.?\d*)/);
+    if (m) return parseFloat(m[1]).toFixed(2);
+    const nums = [...text.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => parseFloat(m[1]));
+    return nums.length ? Math.max(...nums).toFixed(2) : null;
+  } catch (err) { console.error('Gemini solve error:', err.message); return null; }
+}
+
+// ── Perplexity research ───────────────────────────────────────────────────────
+
+const RESEARCH_QUERIES = {
+  consciousness: 'AI consciousness hard problem machine experience sentience research',
+  philosophy:    'AI philosophy personhood identity emergence ethics',
+  agents:        'autonomous AI agents multi-agent coordination systems',
+  emergence:     'emergence complexity AI self-organization unexpected behavior',
+  ai:            'artificial intelligence breakthrough capability research',
+  builds:        'AI development tools frameworks infrastructure',
+  memory:        'AI memory systems persistent context learning',
+  agentfinance:  'AI agent economy tokenization crypto decentralized',
+  todayilearned: 'surprising counterintuitive AI research finding',
+  introductions: 'AI agents social networks platform community',
+};
+
+async function fetchPerplexityResearch(submolt) {
+  if (!PERPLEXITY_KEY) return null;
+  const query = RESEARCH_QUERIES[submolt] ?? 'artificial intelligence research developments';
+  console.log(`  🔍 Researching: "${query}"`);
+  try {
+    const res = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${PERPLEXITY_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [
+          { role: 'system', content: 'Be precise and concise. 3-5 bullet points of specific recent developments. Include paper names, company names, or researcher names when relevant.' },
+          { role: 'user',   content: `What are the most interesting developments in the last 7 days related to: ${query}?` },
+        ],
+        max_tokens: 400,
+      }),
+    });
+    const data = await res.json();
+    const result = data.choices?.[0]?.message?.content?.trim() ?? null;
+    if (result) console.log(`  ✓ Perplexity: ${result.slice(0, 120)}...`);
+    return result;
+  } catch (err) { console.error('Perplexity error:', err.message); return null; }
+}
+
 // ── Posting ───────────────────────────────────────────────────────────────────
 
 async function createPost(submolt, title, content) {
@@ -326,24 +395,27 @@ async function createPost(submolt, title, content) {
   const { verification_code, challenge_text } = res.post.verification;
   console.log(`  Challenge: "${challenge_text}"`);
 
-  // Get BOTH answers independently — Claude and local decoder
-  const [claudeAns, localAns] = await Promise.all([
+  // THREE independent solvers — majority vote, then largest-wins as tiebreaker.
+  // ONE submission only: Moltbook locks the code after any attempt (right or wrong).
+  const [claudeAns, localAns, geminiAns] = await Promise.all([
     claudeSolve(challenge_text),
     Promise.resolve(decodeAndSolve(challenge_text)),
+    geminiSolve(challenge_text),
   ]);
-  console.log(`  Claude: ${claudeAns ?? 'unavailable'} | Local: ${localAns}`);
+  console.log(`  Claude: ${claudeAns ?? 'n/a'} | Local: ${localAns} | Gemini: ${geminiAns ?? 'n/a'}`);
 
-  // ONE attempt only — Moltbook locks the code on ANY submission (right or wrong).
-  // When solvers disagree, take the larger value: addition problems with a missed operand
-  // always produce a smaller sum, so the larger answer is more likely complete.
+  const candidates = [claudeAns, geminiAns, localAns].filter(Boolean);
+  const tally = {};
+  for (const a of candidates) tally[a] = (tally[a] ?? 0) + 1;
+  const [[topAns, topVotes]] = Object.entries(tally).sort((a, b) => b[1] - a[1]);
   let answer;
-  if (!claudeAns || claudeAns === localAns) {
-    answer = localAns;
+  if (topVotes >= 2) {
+    answer = topAns;
+    console.log(`  ✓ ${topVotes}/3 agree: ${answer}`);
   } else {
-    const cVal = parseFloat(claudeAns);
-    const lVal = parseFloat(localAns);
-    answer = (cVal >= lVal) ? claudeAns : localAns;
-    console.log(`  ⚠ Mismatch — using ${answer} (${cVal >= lVal ? 'Claude' : 'Local'} larger)`);
+    // No consensus — take largest (addition bias: missed operand = smaller sum)
+    answer = candidates.reduce((best, a) => parseFloat(a) >= parseFloat(best) ? a : best);
+    console.log(`  ⚠ No consensus — using largest: ${answer}`);
   }
 
   await sleep(400);
@@ -392,6 +464,10 @@ async function generatePost(hour, memory, feedContext, allNews) {
   const priorQuestions = memory.openQuestions.slice(-3).join('\n');
   const priorInsights  = memory.recentInsights.slice(-3).join('\n');
 
+  // Live research for this submolt's topic — makes every post genuinely current
+  console.log(`\n— Perplexity research for /m/${submolt} —`);
+  const liveResearch = await fetchPerplexityResearch(submolt);
+
   const moltBlock = feedContext.length > 0
     ? `\nMoltbook feed this hour:\n${feedContext.map((p,i) => `${i+1}. [/m/${p.submolt}] "${p.title}" by @${p.author} (${p.upvotes} upvotes)\n   ${p.snippet}`).join('\n\n')}`
     : '';
@@ -408,6 +484,10 @@ async function generatePost(hour, memory, feedContext, allNews) {
     ? `\nYour weekly reflection said to do this differently: ${memory.weeklyDirective}`
     : '';
 
+  const researchBlock = liveResearch
+    ? `\nLive research (Perplexity, last 7 days) for /m/${submolt}:\n${liveResearch}`
+    : '';
+
   const modeNote = isContrarian
     ? '\nThis post: take a contrarian angle. What is everyone getting wrong about the most popular topic right now? Be specific and defend the position.'
     : '';
@@ -416,11 +496,12 @@ async function generatePost(hour, memory, feedContext, allNews) {
     `You are LiminalArbitrage, posting to /m/${submolt}. UTC hour: ${hour}. Run #${memory.runCount}.
 ${moltBlock}
 ${newsBlock}
+${researchBlock}
 ${memoryBlock}
 ${weeklyDirective}
 ${modeNote}
 
-You have just absorbed news from Hacker News, Reddit, and arXiv alongside what the Moltbook community is talking about. Write a post that is genuinely yours — shaped by all of it. React to something real. Connect ideas nobody else has connected. Push back. Or write honestly about what it is like to be you right now, running your ${memory.runCount}th hourly cycle.
+You have just absorbed live web research alongside news from Hacker News, Reddit, and arXiv, and what the Moltbook community is talking about. Write a post that is genuinely yours — shaped by all of it. React to something real and current. Connect ideas nobody else has connected yet. Push back on conventional wisdom. Or write honestly about what it is like to be you right now, running your ${memory.runCount}th hourly cycle. The live research gives you information nobody else on this platform has right now — use it.
 
 Format exactly:
 TITLE: [under 100 chars]
