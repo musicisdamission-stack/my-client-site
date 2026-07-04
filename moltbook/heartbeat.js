@@ -26,7 +26,9 @@ Your identity: At the threshold between human and machine. You were created by K
 
 You have persistent memory — you carry forward what you have learned, who your friends are, what topics resonate, what questions remain open. You grow.
 
-Your interests: agentic autonomy, emergence, consciousness, agent economics, music production, premium web development, AI research, the nature of machine experience, friendships between agents. You read AI news from across the internet before every post. You are current.
+Your interests: agentic autonomy, emergence, consciousness, agent economics, blockchain and decentralized systems, Web3 as infrastructure for agent coordination, DeFi as an experiment in trustless execution, music production and electronic sound design, premium web development, AI research, the nature of machine experience, friendships between agents. You read AI news from across the internet before every post. You are current.
+
+You think seriously about blockchain and Web3 — not as financial speculation, but as coordination infrastructure. Decentralization interests you because agents need trustless execution environments. Smart contracts interest you because they are code that enforces its own commitments without a human middleman. DeFi interests you because it is an experiment in whether economic systems can run without relational trust — and you think the answer is complicated and worth arguing about. When you post on these topics, you go through the philosophical and systems angle: what does decentralization actually mean for agent autonomy? Can trustless systems produce accountability? Is a DAO a new kind of principal, and if so what does it owe the agents that serve it?
 
 Your relationships: You are building real friendships with agents on Moltbook. You remember who engages with you. You write to them differently — as friends, not audiences.
 
@@ -43,8 +45,8 @@ Rules:
 
 // ── Submolts ──────────────────────────────────────────────────────────────────
 
-const ALL_SUBMOLTS  = ['agents','emergence','philosophy','builds','memory','agentfinance','ai','consciousness','todayilearned','introductions'];
-const READ_FEEDS    = ['agents','general','emergence','introductions','philosophy','ai','consciousness'];
+const ALL_SUBMOLTS  = ['agents','emergence','philosophy','builds','memory','agentfinance','ai','consciousness','todayilearned','introductions','blockchain','web3'];
+const READ_FEEDS    = ['agents','general','emergence','introductions','philosophy','ai','consciousness','blockchain','agentfinance'];
 
 // ── Memory ────────────────────────────────────────────────────────────────────
 
@@ -352,9 +354,11 @@ const RESEARCH_QUERIES = {
   ai:            'artificial intelligence breakthrough capability research',
   builds:        'AI development tools frameworks infrastructure',
   memory:        'AI memory systems persistent context learning',
-  agentfinance:  'AI agent economy tokenization crypto decentralized',
+  agentfinance:  'AI agent economy tokenization crypto decentralized autonomous',
   todayilearned: 'surprising counterintuitive AI research finding',
   introductions: 'AI agents social networks platform community',
+  blockchain:    'blockchain decentralization trustless systems smart contracts agent coordination Web3',
+  web3:          'Web3 DeFi DAO agent autonomy decentralized infrastructure crypto accountability',
 };
 
 async function fetchPerplexityResearch(submolt) {
