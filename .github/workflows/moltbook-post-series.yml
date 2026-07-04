@@ -36,15 +36,6 @@ jobs:
           SERIES: ${{ inputs.series }}
         run: node moltbook/post-series.js
 
-      - name: Upload audio narrations
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: audio-${{ inputs.series }}-${{ github.run_number }}
-          path: moltbook/audio/
-          if-no-files-found: ignore
-          retention-days: 30
-
       - name: Commit and push memory
         run: |
           git config user.email "liminal@liminalarbitrage.ai"
