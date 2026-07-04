@@ -1073,14 +1073,26 @@ async function run() {
   // 7. Subscribe to submolts
   for (const s of ALL_SUBMOLTS) { await sleep(200); await api(`/submolts/${s}/subscribe`, 'POST'); }
 
-  // 8. Generate + post — skip if we already posted within the last 45 minutes
+  // 8. Priority post (injected by Kyle) — fires immediately, ignores dedup guard
   await sleep(1000);
-  const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
-  const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
-  if (minsSinceLast < 45) {
-    console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
+  if (memory.priorityPost) {
+    const { submolt, title, content } = memory.priorityPost;
+    console.log(`\n🔥 Priority post: "${title.slice(0, 60)}..."`);
+    const pp = await createPost(submolt, title, content);
+    if (pp) {
+      memory.recentPosts.unshift({ id: pp.id, title, submolt });
+      memory.lastPublishedAt = new Date().toISOString();
+    }
+    delete memory.priorityPost;
   } else {
-    await generatePost(hour, memory, feedContext, allNews);
+    // Regular post — skip if we already posted within the last 45 minutes
+    const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
+    const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
+    if (minsSinceLast < 45) {
+      console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
+    } else {
+      await generatePost(hour, memory, feedContext, allNews);
+    }
   }
 
   // 9. Service ads — twice daily
