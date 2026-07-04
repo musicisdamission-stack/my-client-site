@@ -296,27 +296,35 @@ function decodeAndSolve(text) {
 
   // Object-counting patterns: "one claw", "two lobsters", etc. — not math operands
   // We skip a number word if it's immediately followed by an object noun in the joined string
-  const OBJECT_NOUNS = ['claw','lobster','shrimp','prawn','crab','tentacle','leg','eye','arm'];
+  // Also skip numbers that appear AFTER the question mark indicator words — those are noise at end
+  const OBJECT_NOUNS = ['claw','lobster','shrimp','prawn','crab','tentacle','leg','eye','arm','antenna','feeler','segment'];
+  // Truncate joined string at question-end noise markers to avoid parsing filler like "lo.b st errr um"
+  // These markers appear in the obfuscated tail after the actual question
+  const noiseIdx = Math.max(
+    joined.indexOf('howmuch'), joined.indexOf('whatis'), joined.indexOf('total'),
+    joined.indexOf('remains'), joined.indexOf('result'), joined.indexOf('force')
+  );
+  const cleanJoined = noiseIdx > 10 ? joined.slice(0, noiseIdx + 20) : joined;
   function isCountWord(joined, wordStart, wordLen) {
     const after = joined.slice(wordStart + wordLen, wordStart + wordLen + 12);
     return OBJECT_NOUNS.some(n => after.startsWith(n));
   }
 
-  // Scan joined string for number words
+  // Scan cleaned joined string for number words (noise truncated after question marker)
   const nums = [];
   let i = 0;
-  while (i < joined.length) {
+  while (i < cleanJoined.length) {
     let found = false;
     for (const [word, val] of NUMS) {
-      if (joined.startsWith(word, i)) {
+      if (cleanJoined.startsWith(word, i)) {
         // Skip counting words like "one claw", "two lobsters"
-        if (isCountWord(joined, i, word.length)) { i++; found = true; break; }
+        if (isCountWord(cleanJoined, i, word.length)) { i++; found = true; break; }
         let total = val;
         const after = i + word.length;
         // Compound tens+ones: "twentyone", "thirtytwo", etc.
         if (val >= 20) {
           for (const [oWord, oVal] of ONES) {
-            if (joined.startsWith(oWord, after)) {
+            if (cleanJoined.startsWith(oWord, after)) {
               total += oVal;
               i = after + oWord.length;
               found = true;
@@ -486,9 +494,17 @@ async function createPost(submolt, title, content) {
     answer = topAns;
     console.log(`  ✓ ${topVotes}/3 agree: ${answer}`);
   } else {
-    // No consensus — take largest (addition bias: missed operand = smaller sum)
-    answer = candidates.reduce((best, a) => parseFloat(a) >= parseFloat(best) ? a : best);
-    console.log(`  ⚠ No consensus — using largest: ${answer}`);
+    // No consensus — trust localAns: it has explicit operation detection (add/sub/mul/div).
+    // "Use largest" was wrong for subtraction: "loses 12" → correct=23, largest=35 → fail.
+    // Local solver correctly detects "loses/minus/remains" → subtract, "adds/total" → add.
+    if (localAns) {
+      answer = localAns;
+      console.log(`  ⚠ No consensus — trusting local solver: ${answer}`);
+    } else {
+      // Local unavailable — fall back to Claude, then Gemini
+      answer = claudeAns ?? geminiAns ?? candidates[0];
+      console.log(`  ⚠ No consensus, no local — fallback: ${answer}`);
+    }
   }
 
   await sleep(400);
@@ -1010,9 +1026,15 @@ async function run() {
   // 7. Subscribe to submolts
   for (const s of ALL_SUBMOLTS) { await sleep(200); await api(`/submolts/${s}/subscribe`, 'POST'); }
 
-  // 8. Generate + post
+  // 8. Generate + post — skip if we already posted within the last 45 minutes
   await sleep(1000);
-  await generatePost(hour, memory, feedContext, allNews);
+  const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
+  const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
+  if (minsSinceLast < 45) {
+    console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
+  } else {
+    await generatePost(hour, memory, feedContext, allNews);
+  }
 
   // 9. Service ads — twice daily
   if (hour === 6 || hour === 18) { await sleep(1500); await postServiceAd(hour); }
