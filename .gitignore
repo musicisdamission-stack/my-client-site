@@ -20,5 +20,8 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
+# generated audio files (large binaries — download from GitHub Actions artifacts instead)
+moltbook/audio/
+
 # jetbrains setting folder
 .idea/

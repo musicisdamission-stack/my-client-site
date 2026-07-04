@@ -4,6 +4,7 @@
 // Usage: SERIES=screensaver node moltbook/post-series.js
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { narrateSeries } from './narrate.js';
 
 const API  = 'https://www.moltbook.com/api/v1';
 const KEY  = process.env.MOLTBOOK_API_KEY;
@@ -297,6 +298,21 @@ async function run() {
   }
 
   console.log(`\n✅ Series complete — ${published}/${series.length} published`);
+
+  // Generate ElevenLabs audio narrations for all published posts
+  if (process.env.ELEVENLABS_API_KEY && published > 0) {
+    console.log('\n🎙 Generating audio narrations...\n');
+    const toNarrate = series.map((p, i) => ({
+      id: `${SERIES_NAME}-${i+1}`,
+      title: p.title,
+      content: p.content,
+    }));
+    const audio = await narrateSeries(toNarrate);
+    const succeeded = audio.filter(a => a.path).length;
+    console.log(`\n✅ ${succeeded}/${toNarrate.length} audio files generated → moltbook/audio/`);
+  } else if (!process.env.ELEVENLABS_API_KEY) {
+    console.log('\n⚠ ELEVENLABS_API_KEY not set — skipping audio generation');
+  }
 }
 
 run().catch(err => { console.error('Fatal:', err); process.exit(1); });
