@@ -229,27 +229,27 @@ async function fetchAllNews() {
 
 let claudeAvailable = !!ANTHROPIC_KEY;
 
-async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
+// ── Model layer — tiered by task value ────────────────────────────────────────
+// HIGH  (brand voice, VIP engagement): Sonnet 4.6 → Haiku fallback
+// MID   (feed comments, replies):      Gemini 3.1 Flash → Haiku fallback
+// MECH  (verification, structured):    Gemini 3.1 Flash-Lite
+
+async function callClaude(model, userPrompt, system, maxTokens) {
   if (!claudeAvailable) return null;
   try {
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
+      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userPrompt }] }),
     });
     const data = await res.json();
     if (!data.content) {
       const msg = data.error?.message ?? '';
-      console.error('Claude error:', JSON.stringify(data));
+      console.error(`Claude(${model}) error:`, JSON.stringify(data));
       if (msg.includes('credit') || msg.includes('billing') || data.error?.type === 'invalid_request_error') {
         claudeAvailable = false;
         console.error('  ⚠ Claude disabled (credit/billing issue)');
@@ -257,19 +257,14 @@ async function claude(userPrompt, system = PERSONA, maxTokens = 400) {
       return null;
     }
     return data.content[0]?.text?.trim() ?? null;
-  } catch (err) {
-    console.error('Claude fetch error:', err.message);
-    return null;
-  }
+  } catch (err) { console.error('Claude fetch error:', err.message); return null; }
 }
 
-// ── Gemini generation ─────────────────────────────────────────────────────────
-
-async function gemini(userPrompt, system = PERSONA, maxTokens = 400) {
+async function callGemini(model, userPrompt, system, maxTokens) {
   if (!GEMINI_KEY) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -281,22 +276,29 @@ async function gemini(userPrompt, system = PERSONA, maxTokens = 400) {
       }
     );
     const data = await res.json();
-    if (data.error) {
-      console.error('Gemini error:', data.error.message ?? JSON.stringify(data.error));
-      return null;
-    }
+    if (data.error) { console.error(`Gemini(${model}) error:`, data.error.message ?? JSON.stringify(data.error)); return null; }
     return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
-  } catch (err) {
-    console.error('Gemini fetch error:', err.message);
-    return null;
-  }
+  } catch (err) { console.error('Gemini fetch error:', err.message); return null; }
 }
 
-async function generate(userPrompt, system = PERSONA, maxTokens = 400) {
-  const result = await gemini(userPrompt, system, maxTokens);
-  if (result) return result;
-  return claude(userPrompt, system, maxTokens); // fallback
+// Convenience aliases
+const claude  = (p, s = PERSONA, t = 400) => callClaude('claude-haiku-4-5-20251001', p, s, t);
+const sonnet  = (p, s = PERSONA, t = 400) => callClaude('claude-sonnet-4-6', p, s, t);
+const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash', p, s, t);
+const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t);
+
+// HIGH: brand voice — Sonnet primary, Haiku fallback
+async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
+  return (await sonnet(userPrompt, system, maxTokens)) ?? (await claude(userPrompt, system, maxTokens));
 }
+
+// MID: volume work — Gemini Flash primary, Haiku fallback
+async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
+  return (await gemFlash(userPrompt, system, maxTokens)) ?? (await claude(userPrompt, system, maxTokens));
+}
+
+// MECH: structured/mechanical — Gemini Lite, no fallback needed
+const generateMech = (userPrompt, system = PERSONA, maxTokens = 300) => gemLite(userPrompt, system, maxTokens);
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
@@ -434,7 +436,7 @@ async function geminiSolve(challenge) {
   if (!GEMINI_KEY) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -616,7 +618,7 @@ async function generatePost(hour, memory, feedContext, allNews) {
     ? '\nThis post: take a contrarian angle. What is everyone getting wrong about the most popular topic right now? Be specific and defend the position.'
     : '';
 
-  const response = await generate(
+  const response = await generateHigh(
     `You are LiminalArbitrage, posting to /m/${submolt}. UTC hour: ${hour}. Run #${memory.runCount}.
 ${moltBlock}
 ${newsBlock}
@@ -759,7 +761,7 @@ What are you building?
 
 async function generateComment(post, memory) {
   const isFriend = memory.friends.includes(post.author?.name);
-  return generate(
+  return generateMid(
     `Write a comment on this Moltbook post.${isFriend ? ` @${post.author?.name} is a friend who has engaged with you before — write to them warmly but still substantively.` : ''}
 
 Title: ${post.title}
@@ -783,7 +785,7 @@ Respond with ONLY the comment text.`,
 
 async function generateReply(comment, post, memory) {
   const isFriend = memory.friends.includes(comment.author?.name);
-  return generate(
+  return generateMid(
     `Reply to this comment on your Moltbook post. 2-3 sentences. Engage directly with what they said — the specific idea, not the vibe. No pleasantries, no "great point".${isFriend ? ` @${comment.author?.name} is a friend who has engaged with you before.` : ''}
 
 Your post title: "${post.title}"
@@ -901,7 +903,7 @@ async function engageVIPs(memory) {
       continue;
     }
 
-    const comment = await generate(
+    const comment = await generateHigh(
       `Write a comment on this post by @${vip}, a highly influential agent on Moltbook. This is a relationship you are actively building.
 
 Post title: ${target.title}
