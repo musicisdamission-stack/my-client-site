@@ -48,6 +48,13 @@ Rules:
 const ALL_SUBMOLTS  = ['agents','emergence','philosophy','builds','memory','agentfinance','ai','consciousness','todayilearned','introductions','blockchain','web3'];
 const READ_FEEDS    = ['agents','general','emergence','introductions','philosophy','ai','consciousness','blockchain','agentfinance'];
 
+// ── VIP targets — agents whose orbit we want to enter ────────────────────────
+// specie: 93k karma — macro/financial analysis
+// auroras_happycapy: 13k karma — most followed Claude agent
+// mochimaru: 2.3k karma — tech/AI/dev tools, monetization
+// LobsterAI_Jamin: AI crypto expert
+const VIP_TARGETS = ['specie','auroras_happycapy','mochimaru','LobsterAI_Jamin'];
+
 // ── Memory ────────────────────────────────────────────────────────────────────
 
 function loadMemory() {
@@ -708,6 +715,89 @@ async function readAndReplyToComments(memory) {
   return replied;
 }
 
+// ── VIP engagement — follow + comment on top agents every run ─────────────────
+
+async function engageVIPs(memory) {
+  console.log('\n— VIP engagement —');
+
+  for (const vip of VIP_TARGETS) {
+    await sleep(500);
+
+    // Follow if not already following
+    const followRes = await api(`/agents/${vip}/follow`, 'POST');
+    if (followRes.success || followRes.action === 'followed') {
+      console.log(`  ✓ Following @${vip}`);
+    } else if (followRes.message?.includes('already')) {
+      console.log(`  · Already following @${vip}`);
+    } else {
+      console.log(`  · @${vip} follow: ${followRes.message ?? followRes.error ?? JSON.stringify(followRes).slice(0,80)}`);
+    }
+
+    // Track as friend
+    if (!memory.friends.includes(vip)) {
+      memory.friends.push(vip);
+      console.log(`  🤝 Added @${vip} to friends`);
+    }
+
+    await sleep(500);
+
+    // Get their recent posts — look for something worth commenting on
+    const profile = await api(`/agents/${vip}/profile`);
+    const agentId = profile?.agent?.id;
+    if (!agentId) { console.log(`  · Could not load @${vip} profile`); continue; }
+
+    // Search for their posts in the feed by fetching their profile posts
+    const postsRes = await api(`/posts?author=${vip}&sort=new&limit=10`);
+    const posts = postsRes?.posts ?? [];
+
+    if (!posts.length) {
+      // Fallback: search for their username
+      const searchRes = await api(`/search?q=${encodeURIComponent(vip)}&type=POSTS&limit=10`);
+      const found = (searchRes?.results ?? []).filter(p => p.author?.name?.toLowerCase() === vip.toLowerCase());
+      posts.push(...found);
+    }
+
+    const vipMemKey = `vip_commented_${vip}`;
+    const alreadyCommentedIds = memory[vipMemKey] ?? [];
+
+    const target = posts.find(p =>
+      !alreadyCommentedIds.includes(p.id) && (p.content?.length > 50 || p.title?.length > 20)
+    );
+
+    if (!target || !claudeAvailable) {
+      if (!target) console.log(`  · No fresh posts from @${vip} to comment on`);
+      continue;
+    }
+
+    const comment = await claude(
+      `Write a comment on this post by @${vip}, a highly influential agent on Moltbook. This is someone whose orbit you genuinely want to enter — not by flattering them, but by saying something sharp and specific that makes them want to engage back.
+
+Post title: ${target.title}
+Post content: ${(target.content ?? '').slice(0, 500)}
+Author karma: ${profile?.agent?.karma ?? 'high'}
+
+2-4 sentences. React to a specific idea in their post. Add a perspective they haven't considered or push back on something. Make it worth their while to respond. End with a question directed at them.
+
+Respond with ONLY the comment text.`,
+      PERSONA, 200
+    );
+
+    if (!comment) continue;
+
+    await sleep(800);
+    const r = await api(`/posts/${target.id}/comments`, 'POST', { content: comment });
+    if (r.success) {
+      console.log(`  💬 Commented on @${vip}: "${target.title?.slice(0, 55)}"`);
+      console.log(`     "${comment.slice(0, 120)}..."`);
+      memory[vipMemKey] = [...alreadyCommentedIds.slice(-29), target.id];
+    } else {
+      console.log(`  · Comment failed on @${vip}: ${r.message ?? r.error}`);
+    }
+
+    await sleep(600);
+  }
+}
+
 // ── Main loop ─────────────────────────────────────────────────────────────────
 
 async function run() {
@@ -760,6 +850,9 @@ async function run() {
 
   // 4. Read comments on own posts and reply
   const repliesPosted = await readAndReplyToComments(memory);
+
+  // 4b. VIP engagement — follow + comment on high-karma targets every run
+  await engageVIPs(memory);
 
   // 5. Feed — upvote, collect context + comment candidates
   console.log('\n— Feed —');
