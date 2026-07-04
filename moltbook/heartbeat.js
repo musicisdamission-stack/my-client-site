@@ -381,7 +381,9 @@ function decodeAndSolve(text) {
 
   // "per" excluded — matches "per second" in rate descriptions, not division
   const sub = /\b(minus|subtract|less|drop|reduce|below|lost|slow|decel|decrease|lose|loses|difference)\b/.test(spaced);
-  const mul = /\b(times|multipl|product|each)\b/.test(spaced);
+  // "distance/howfar" + "per" + time unit = rate × time problem
+  const rateTime = /\b(distance|howfar|howlong)\b/.test(joined) && /per/.test(joined);
+  const mul = rateTime || /\b(times|multipl|product|each)\b/.test(spaced);
   const div = /\b(divide|split|half|quarter|quotient)\b/.test(spaced);
   let r;
   if (div) r = nums[0] / nums[1];
@@ -405,12 +407,14 @@ DECODE STEPS:
 CRITICAL RULES:
 - Words like "one/two/three" that COUNT objects ("one claw", "two lobsters") are NOT math operands — ignore them
 - The math values are MEASUREMENTS with units: forces (newtons), speeds (meters/second), distances (centimeters), weights (grams)
-- "per second/meter/unit" = descriptor, NOT division
-- Operations: "slow/lose/drop/minus/decrease/difference" = subtract; "times/multiply/each" = multiply; "divide/half/quarter/quotient" = divide; "sum/total/combined/gains/adds/plus" or nothing = add
+- "per second/meter/minute/unit" = descriptor, NOT division
+- PHYSICS RATE × TIME: "swims at X per minute for Y minutes, what is the distance?" → MULTIPLY: X × Y = answer
+- Operations: "slow/lose/drop/minus/decrease/difference" = subtract; "times/multiply/each/distance/howfar" = multiply; "divide/half/quarter/quotient" = divide; "sum/total/combined/gains/adds/plus" or nothing = add
 
 EXAMPLES:
 "ONE claw applies TWENTY newtons, OTHER claw applies FIFTEEN newtons, combined force?" → ignore "one", values are 20+15 = ##ANSWER: 35.00
 "lobster swims at TWENTY EIGHT meters and SLOWS by FIVE" → 28-5 = ##ANSWER: 23.00
+"lobster swims at TWENTY THREE meters per minute for FOUR minutes, distance?" → rate×time = 23×4 = ##ANSWER: 92.00
 
 Challenge: ${challenge}
 
@@ -442,7 +446,7 @@ async function geminiSolve(challenge) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text:
-            `Moltbook math verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter" = unit NOT division. "one/two claw/lobster" = count word NOT math operand. Operations: lose/drop/minus/difference=subtract; times/multiply=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX`
+            `Moltbook math verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter/minute" = unit NOT division. "one/two claw/lobster" = count word NOT math operand. PHYSICS: "X per minute for Y minutes, what is the distance?" = X times Y (multiply). Operations: lose/drop/minus/difference=subtract; times/multiply/distance=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX`
           }] }],
           generationConfig: { maxOutputTokens: 300 },
         }),
@@ -1082,8 +1086,10 @@ async function run() {
     if (pp) {
       memory.recentPosts.unshift({ id: pp.id, title, submolt });
       memory.lastPublishedAt = new Date().toISOString();
+      delete memory.priorityPost; // only clear on success — retries next run if verification fails
+    } else {
+      console.log('  ⚠ Priority post verification failed — will retry next run');
     }
-    delete memory.priorityPost;
   } else {
     // Regular post — skip if we already posted within the last 45 minutes
     const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
