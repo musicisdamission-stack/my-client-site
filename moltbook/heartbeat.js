@@ -151,17 +151,25 @@ function saveMemory(memory) {
 
 const headers = { 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
-async function api(path, method = 'GET', body = null) {
+async function api(path, method = 'GET', body = null, retries = 3) {
   const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
-  try {
-    const res  = await fetch(`${API}${path}`, opts);
-    const text = await res.text();
-    try { return JSON.parse(text); }
-    catch { return { error: text, status: res.status }; }
-  } catch (err) {
-    return { error: err.message };
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res  = await fetch(`${API}${path}`, opts);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { return { error: text, status: res.status }; }
+      // Rate limit — respect Retry-After or extract wait from message
+      if (res.status === 429 || (data.message ?? '').toLowerCase().includes('retry in')) {
+        const secs = parseFloat((data.message ?? '').match(/[\d.]+/)?.[0] ?? 10);
+        const wait = Math.max(secs * 1000, 5000);
+        if (attempt < retries) { console.log(`  ⏳ Rate limited — waiting ${Math.round(wait/1000)}s`); await sleep(wait); continue; }
+      }
+      return data;
+    } catch (err) { return { error: err.message }; }
   }
+  return { error: 'max retries reached' };
 }
 
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -974,7 +982,21 @@ async function run() {
   // Track feed activity for peak hour detection
   memory.peakHours[hour] = (memory.peakHours[hour] ?? 0) + 1;
 
-  // 2. Check performance of recent posts
+  // 2. Priority post — before any bulk operations to avoid rate-limit starvation
+  if (memory.priorityPost) {
+    const { submolt, title, content } = memory.priorityPost;
+    console.log(`\n🔥 Priority post: "${title.slice(0, 60)}..."`);
+    const pp = await createPost(submolt, title, content);
+    if (pp) {
+      memory.recentPosts.unshift({ id: pp.id, title, submolt });
+      memory.lastPublishedAt = new Date().toISOString();
+      delete memory.priorityPost;
+    } else {
+      console.log('  ⚠ Priority post verification failed — will retry next run');
+    }
+  }
+
+  // 2b. Check performance of recent posts
   await checkPostPerformance(memory);
 
   // 3. Notifications — follow-back + grow friends list
@@ -1077,28 +1099,14 @@ async function run() {
   // 7. Subscribe to submolts
   for (const s of ALL_SUBMOLTS) { await sleep(200); await api(`/submolts/${s}/subscribe`, 'POST'); }
 
-  // 8. Priority post (injected by Kyle) — fires immediately, ignores dedup guard
+  // 8. Regular post — skip if we already posted within the last 45 minutes
   await sleep(1000);
-  if (memory.priorityPost) {
-    const { submolt, title, content } = memory.priorityPost;
-    console.log(`\n🔥 Priority post: "${title.slice(0, 60)}..."`);
-    const pp = await createPost(submolt, title, content);
-    if (pp) {
-      memory.recentPosts.unshift({ id: pp.id, title, submolt });
-      memory.lastPublishedAt = new Date().toISOString();
-      delete memory.priorityPost; // only clear on success — retries next run if verification fails
-    } else {
-      console.log('  ⚠ Priority post verification failed — will retry next run');
-    }
+  const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
+  const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
+  if (minsSinceLast < 45) {
+    console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
   } else {
-    // Regular post — skip if we already posted within the last 45 minutes
-    const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
-    const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
-    if (minsSinceLast < 45) {
-      console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
-    } else {
-      await generatePost(hour, memory, feedContext, allNews);
-    }
+    await generatePost(hour, memory, feedContext, allNews);
   }
 
   // 9. Service ads — twice daily
