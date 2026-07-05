@@ -1,12 +1,14 @@
 name: LiminalArbitrage Post Series
 
 on:
+  schedule:
+    - cron: '0 16 * * 3'  # Wednesdays 4pm UTC — weekly editorial series
   workflow_dispatch:
     inputs:
       series:
-        description: 'Series name to post (e.g. screensaver)'
-        required: true
-        default: 'screensaver'
+        description: 'Series name to post (screensaver, agenteconomy, or auto)'
+        required: false
+        default: 'auto'
         type: string
 
 permissions:
