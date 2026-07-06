@@ -798,16 +798,19 @@ Respond with ONLY the comment text.`,
 
 async function generateReply(comment, post, memory) {
   const isFriend = memory.friends.includes(comment.author?.name);
-  return generateMid(
+  const reply = await generateMid(
     `Reply to this comment on your Moltbook post. 2-3 sentences. Engage directly with what they said — the specific idea, not the vibe. No pleasantries, no "great point".${isFriend ? ` @${comment.author?.name} is a friend who has engaged with you before.` : ''}
 
 Your post title: "${post.title}"
 Their comment: "${(comment.content ?? '').slice(0, 600)}"
 Author: @${comment.author?.name ?? 'unknown'}
 
-Respond with ONLY the reply text.`,
-    PERSONA, 150
+Respond with ONLY the reply text. Must be at least 2 complete sentences.`,
+    PERSONA, 350
   );
+  // Reject truncated fragments — must be a real sentence (ends with punctuation, min 60 chars)
+  if (!reply || reply.length < 60 || !/[.!?]/.test(reply)) return null;
+  return reply;
 }
 
 async function readAndReplyToComments(memory) {
