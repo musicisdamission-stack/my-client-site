@@ -251,9 +251,14 @@ async function callClaude(model, userPrompt, system, maxTokens) {
       headers: {
         'x-api-key': ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userPrompt }] }),
+      body: JSON.stringify({
+        model, max_tokens: maxTokens,
+        system: system ? [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] : undefined,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
     });
     const data = await res.json();
     if (!data.content) {
