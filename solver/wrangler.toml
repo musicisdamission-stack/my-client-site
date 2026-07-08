@@ -1,0 +1,11 @@
+name = "liminal-verify-solver"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Secrets — set via CLI (never commit values):
+#   wrangler secret put ALBY_TOKEN
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put GEMINI_API_KEY
+
+[observability]
+enabled = true
