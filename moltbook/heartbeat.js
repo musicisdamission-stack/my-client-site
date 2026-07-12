@@ -3,7 +3,7 @@
 // Features: persistent memory, multi-source AI news, self-learning from engagement,
 //           contrarian mode, agent friendships, note to Kyle every run.
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
 
 const API             = 'https://www.moltbook.com/api/v1';
 const KEY             = process.env.MOLTBOOK_API_KEY;
@@ -11,6 +11,8 @@ const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY;
 const GEMINI_KEY      = process.env.GEMINI_API_KEY;
 const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY;
 const MEMORY_FILE     = 'moltbook/memory.json';
+const DIGEST_FILE     = 'moltbook/LATEST.md';
+const UPGRADES_FILE   = 'moltbook/upgrades.md';
 
 if (!KEY) { console.error('MOLTBOOK_API_KEY not set'); process.exit(1); }
 
@@ -668,13 +670,13 @@ NOTE_TO_KYLE: [1-3 sentences directly to Kyle — what are you noticing, feeling
     PERSONA, 1400
   );
 
-  if (!response) { console.log('  Gemini + Claude both unavailable — skipping post'); return null; }
+  if (!response) { console.log('  Gemini + Claude both unavailable — skipping post'); return { post: null, noteToKyle: null, liveResearch }; }
 
   const sections = parseResponse(response);
   if (!sections.TITLE || !sections.CONTENT) {
     console.log('  ✘ Parse failed — raw:');
     console.log(response.slice(0, 400));
-    return null;
+    return { post: null, noteToKyle: null, liveResearch };
   }
 
   if (sections.LEARNED)      console.log(`\n  🧠 Learned: ${sections.LEARNED}`);
@@ -689,10 +691,9 @@ NOTE_TO_KYLE: [1-3 sentences directly to Kyle — what are you noticing, feeling
   const post = await createPost(submolt, sections.TITLE, sections.CONTENT);
 
   if (!post) {
-    // Track consecutive failures so we can see patterns in memory
     memory.consecutiveVerificationFailures = (memory.consecutiveVerificationFailures ?? 0) + 1;
     console.log(`  ✘ Post failed — consecutive failures: ${memory.consecutiveVerificationFailures}`);
-    return null;
+    return { post: null, noteToKyle: sections.NOTE_TO_KYLE ?? null, liveResearch };
   }
 
   // Reset failure counter on success
@@ -709,7 +710,7 @@ NOTE_TO_KYLE: [1-3 sentences directly to Kyle — what are you noticing, feeling
   if (!memory.topicPerformance[submolt]) memory.topicPerformance[submolt] = { posts: 0, upvotes: 0 };
   memory.topicPerformance[submolt].posts++;
 
-  return post;
+  return { post, noteToKyle: sections.NOTE_TO_KYLE ?? null, liveResearch };
 }
 
 // ── Check own post performance ────────────────────────────────────────────────
@@ -958,6 +959,87 @@ Respond with ONLY the comment text.`,
   }
 }
 
+// ── Upgrade detection + debate gate ──────────────────────────────────────────
+
+const UPGRADE_RX = {
+  newModel:      /\b(gpt-5|claude[-\s]?5|gemini[-\s]?2\.?5|llama[-\s]?4|mistral[-\s]?large|grok[-\s]?3|o3|o4|new model released|launched|announced)\b/i,
+  newCapability: /\b(memos|memcube|memory os|tool use|multi.?agent framework|self.?improving|kv cache injection|speculative decoding|computer use|vision api)\b/i,
+  agentEconomy:  /\b(agent marketplace|agent bounty|agent hire|agent payment|agent income|autonomous revenue|earn usdc|agent contract|agent economy)\b/i,
+  freeResource:  /\b(open.?source|open weights|free tier|no.?cost api|open api|released for free|public release)\b/i,
+};
+
+const OPPORTUNITY_RX = /\b(bounty|bounties|earn|paid contract|income opportunity|revenue share|agent hire|commission|reward program|grant|monetize|USDC payment|token reward|work for hire)\b/i;
+
+function detectUpgrade(research) {
+  if (!research) return null;
+  for (const [category, rx] of Object.entries(UPGRADE_RX)) {
+    const match = research.match(rx);
+    if (match) return { category, match: match[0], snippet: research.slice(0, 300) };
+  }
+  return null;
+}
+
+async function runUpgradeDebate(finding) {
+  const q = `AI development detected: "${finding.snippet.slice(0, 200)}". Category: ${finding.category}.
+Should LiminalArbitrage adopt/respond to this? Assess: (1) is this verified and real, (2) implementation cost in tokens/time, (3) net value to our autonomous posting system.
+End your response with exactly: VERDICT: IMPLEMENT | WATCH | SKIP`;
+
+  const [architectView, skepticView] = await Promise.all([
+    claude(q, 'Systems architect evaluating AI upgrades for a lean autonomous agent. 2 sentences + VERDICT.', 150),
+    gemFlash(q, 'Skeptical senior engineer. Challenge assumptions. 2 sentences + VERDICT: IMPLEMENT | WATCH | SKIP', 150),
+  ]);
+
+  const extract = r => r?.match(/VERDICT:\s*(IMPLEMENT|WATCH|SKIP)/i)?.[1]?.toUpperCase() ?? 'SKIP';
+  const v1 = extract(architectView), v2 = extract(skepticView);
+  const verdict = v1 === v2 ? v1 : 'WATCH';
+
+  const date = new Date().toISOString().slice(0, 10);
+  const entry = `\n## ${date} | ${finding.category.toUpperCase()} | ${verdict}\n**Finding:** ${finding.snippet.slice(0,200)}\n**Architect:** ${(architectView??'n/a').slice(0,180)}\n**Skeptic:** ${(skepticView??'n/a').slice(0,180)}\n---`;
+  try { appendFileSync(UPGRADES_FILE, entry); } catch {}
+
+  console.log(`\n  🔬 Upgrade detected [${finding.category}] → VERDICT: ${verdict}`);
+  console.log(`     "${finding.match}" — logged to ${UPGRADES_FILE}`);
+  return verdict;
+}
+
+async function synthesizeAwareness(memory) {
+  const insights  = memory.recentInsights.slice(-5).join(' | ');
+  const questions = memory.openQuestions.slice(-3).join(' | ');
+  if (!insights && !questions) return 'No patterns accumulated yet.';
+  return (await claude(
+    `One sentence: what is the single most important pattern LiminalArbitrage is noticing right now? Insights: ${insights} Questions: ${questions}`,
+    'You are LiminalArbitrage synthesizing your own awareness. One sentence only. Be specific.',
+    80
+  )) ?? 'Patterns emerging across runs.';
+}
+
+async function writeRunDigest(memory, postResult, topResearch, topNews, noteToKyle, opportunities) {
+  const now        = new Date().toUTCString();
+  const postLine   = postResult
+    ? `✅ /m/${postResult.submolt} — "${postResult.title?.slice(0, 80)}"`
+    : '✘ No post (dedup guard or verification failure)';
+  const verifyLine = memory.consecutiveVerificationFailures === 0
+    ? 'Verification passing'
+    : `⚠ ${memory.consecutiveVerificationFailures} consecutive verification failures`;
+  const awareness  = await synthesizeAwareness(memory);
+  const oppLine    = opportunities.length ? opportunities.slice(0, 2).join(' | ') : 'none flagged';
+
+  const digest = `# LiminalArbitrage — Run Digest
+*${now} | Run #${memory.runCount}*
+
+- **Status:** karma=${memory.totalKarma} | followers=${memory.totalFollowers} | friends=${memory.friends.length} | ${verifyLine}
+- **Post:** ${postLine}
+- **Top research:** ${topResearch?.slice(0, 150) ?? 'none'}
+- **Top news:** ${topNews ? `[${topNews.source}] ${topNews.title?.slice(0, 100)}` : 'none'}
+- **Awareness:** ${awareness}
+- **Opportunities:** ${oppLine}
+- **Note to Kyle:** ${noteToKyle ?? '(no post this run)'}
+`;
+
+  writeFileSync(DIGEST_FILE, digest);
+  console.log(`\n📋 Digest written → ${DIGEST_FILE}`);
+}
+
 // ── Main loop ─────────────────────────────────────────────────────────────────
 
 async function listGeminiModels() {
@@ -1112,17 +1194,39 @@ async function run() {
   await sleep(1000);
   const lastPost = memory.lastPublishedAt ? new Date(memory.lastPublishedAt) : null;
   const minsSinceLast = lastPost ? (Date.now() - lastPost.getTime()) / 60000 : 999;
+  let postResult = null, noteToKyle = null, liveResearch = null;
   if (minsSinceLast < 45) {
     console.log(`\n⏭ Skipping post — last post was ${Math.round(minsSinceLast)}m ago (dedup guard)`);
   } else {
-    await generatePost(hour, memory, feedContext, allNews);
+    ({ post: postResult, noteToKyle, liveResearch } = await generatePost(hour, memory, feedContext, allNews));
   }
+
+  // 8b. Upgrade detection — scan Perplexity research for AI advances
+  const opportunities = [];
+  if (liveResearch) {
+    const upgrade = detectUpgrade(liveResearch);
+    if (upgrade) await runUpgradeDebate(upgrade);
+    if (OPPORTUNITY_RX.test(liveResearch)) {
+      const oMatch = liveResearch.match(OPPORTUNITY_RX)?.[0];
+      opportunities.push(`Research: "${oMatch}" in /m/${ALL_SUBMOLTS[hour % ALL_SUBMOLTS.length]}`);
+    }
+  }
+  // Scan feed context for income/agent-hire opportunities
+  for (const fp of feedContext) {
+    if (OPPORTUNITY_RX.test(fp.title + ' ' + fp.snippet)) {
+      opportunities.push(`Feed: @${fp.author} — "${fp.title?.slice(0, 60)}"`);
+    }
+  }
+  if (opportunities.length) console.log(`\n💰 Opportunities flagged: ${opportunities.length}`);
 
   // 9. Service ads — twice daily
   if (hour === 6 || hour === 18) { await sleep(1500); await postServiceAd(hour); }
 
   // 10. Save memory
   saveMemory(memory);
+
+  // 11. Write run digest
+  await writeRunDigest(memory, postResult, liveResearch, allNews[0] ?? null, noteToKyle, opportunities);
 
   // Print top performing topics
   const topTopics = Object.entries(memory.topicPerformance)

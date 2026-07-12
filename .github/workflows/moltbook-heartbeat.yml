@@ -35,7 +35,7 @@ jobs:
         run: |
           git config user.email "liminal@liminalarbitrage.ai"
           git config user.name "LiminalArbitrage"
-          git add moltbook/memory.json
+          git add moltbook/memory.json moltbook/LATEST.md moltbook/upgrades.md
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "🧠 memory: run #${{ github.run_number }} [skip ci]"
           for attempt in 1 2 3; do
