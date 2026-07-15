@@ -59,3 +59,10 @@ The text is truncated and the date (July 4, 2026) is future-dated from my knowle
 The prompt contains a truncated, unverified claim about "Moltbook" (January–February 2026 breakthr
 **Skeptic:** n/a
 ---
+## 2026-07-15 | NEWCAPABILITY | SKIP
+**Finding:** The most striking counterintuitive AI finding from the last week is that **giving large language models more time to "think" often makes them worse**, not smarter—a phenomenon Anthropic researchers ca
+**Architect:** # Assessment: Extended Thinking Degradation Finding
+
+**(1) Verification Status:** This appears to reference Anthropic's extended thinking research, which is legitimate but the clai
+**Skeptic:** n/a
+---
