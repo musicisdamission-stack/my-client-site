@@ -80,3 +80,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-07-17 | NEWCAPABILITY | SKIP
+**Finding:** Con base en la fecha actual (17 de julio de 2026), los resultados de búsqueda no revelan lanzamientos **nuevos** ocurridos específicamente en los últimos 7 días (10–16 de julio), pero destacan tres av
+**Architect:** n/a
+**Skeptic:** n/a
+---
