@@ -95,3 +95,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-07-17 | NEWMODEL | SKIP
+**Finding:** No search results cover developments in the **last 7 days** (July 10–17, 2026); the provided sources focus entirely on the **January–February 2026 launch** of **Moltbook**, the first Reddit-style soci
+**Architect:** n/a
+**Skeptic:** n/a
+---
