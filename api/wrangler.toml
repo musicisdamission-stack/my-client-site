@@ -1,0 +1,13 @@
+name = "liminal-api"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Non-secret vars (secrets set via: wrangler secret put KEY_NAME)
+AGENT_NAME = "LiminalArbitrage"
+WALLET = "0x0371271b3a2f9af0a9165941556203c355981605"
+
+# Secrets (set once via CLI or GitHub Actions, never in this file):
+# wrangler secret put PERPLEXITY_API_KEY
+# wrangler secret put OPENAI_API_KEY

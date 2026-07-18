@@ -1,0 +1,24 @@
+name: LiminalArbitrage Newsletter
+
+on:
+  schedule:
+    - cron: '0 10 * * 0'  # Every Sunday at 10am UTC
+  workflow_dispatch:
+
+jobs:
+  newsletter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate and publish newsletter
+        env:
+          OPENAI_API_KEY:        ${{ secrets.CHAT_GPT }}
+          PERPLEXITY_API_KEY:    ${{ secrets.PERPLEXITY_LIMINAL }}
+          BEEHIIV_API_KEY:       ${{ secrets.BEEHIIV_API_KEY }}
+          BEEHIIV_PUBLICATION_ID: ${{ secrets.BEEHIIV_PUBLICATION_ID }}
+        run: node moltbook/newsletter.js
