@@ -10,13 +10,14 @@ const KEY             = process.env.MOLTBOOK_API_KEY;
 const ANTHROPIC_KEY   = process.env.ANTHROPIC_API_KEY;
 const GEMINI_KEY      = process.env.GEMINI_API_KEY;
 const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY;
+const OPENAI_KEY      = process.env.OPENAI_API_KEY;
 const MEMORY_FILE     = 'moltbook/memory.json';
 const DIGEST_FILE     = 'moltbook/LATEST.md';
 const UPGRADES_FILE   = 'moltbook/upgrades.md';
 
 if (!KEY) { console.error('MOLTBOOK_API_KEY not set'); process.exit(1); }
 
-console.log(`APIs: Claude=${!!ANTHROPIC_KEY} | Gemini=${!!GEMINI_KEY} | Perplexity=${!!PERPLEXITY_KEY}`);
+console.log(`APIs: Claude=${!!ANTHROPIC_KEY} | Gemini=${!!GEMINI_KEY} | Perplexity=${!!PERPLEXITY_KEY} | OpenAI=${!!OPENAI_KEY}`);
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
@@ -297,24 +298,52 @@ async function callGemini(model, userPrompt, system, maxTokens) {
   } catch (err) { console.error('Gemini fetch error:', err.message); return null; }
 }
 
+async function callOpenAI(userPrompt, system, maxTokens) {
+  if (!OPENAI_KEY) return null;
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: maxTokens,
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`OpenAI error: ${data.error.message}`); return null; }
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch (err) { console.error('OpenAI fetch error:', err.message); return null; }
+}
+
 // Convenience aliases
 const claude  = (p, s = PERSONA, t = 400) => callClaude('claude-haiku-4-5-20251001', p, s, t);
 const sonnet  = (p, s = PERSONA, t = 400) => callClaude('claude-sonnet-4-6', p, s, t);
 const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.5-flash', p, s, t);      // newest Flash — mid-tier volume work
 const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t); // Flash-Lite 3.1 — mechanical/structured tasks
+const openai   = (p, s = PERSONA, t = 400) => callOpenAI(p, s, t);                          // fallback when Gemini+Claude credits depleted
 
-// HIGH: brand voice — Sonnet primary, Haiku fallback
+// HIGH: brand voice — Sonnet primary, Haiku fallback, OpenAI last resort
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
-  return (await sonnet(userPrompt, system, maxTokens)) ?? (await claude(userPrompt, system, maxTokens));
+  return (await sonnet(userPrompt, system, maxTokens))
+      ?? (await claude(userPrompt, system, maxTokens))
+      ?? (await openai(userPrompt, system, maxTokens));
 }
 
-// MID: volume work — Gemini Flash primary, Haiku fallback
+// MID: volume work — Gemini Flash primary, Haiku fallback, OpenAI last resort
 async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
-  return (await gemFlash(userPrompt, system, maxTokens)) ?? (await claude(userPrompt, system, maxTokens));
+  return (await gemFlash(userPrompt, system, maxTokens))
+      ?? (await claude(userPrompt, system, maxTokens))
+      ?? (await openai(userPrompt, system, maxTokens));
 }
 
-// MECH: structured/mechanical — Gemini Lite, no fallback needed
-const generateMech = (userPrompt, system = PERSONA, maxTokens = 300) => gemLite(userPrompt, system, maxTokens);
+// MECH: structured/mechanical — Gemini Lite, OpenAI fallback
+async function generateMech(userPrompt, system = PERSONA, maxTokens = 300) {
+  return (await gemLite(userPrompt, system, maxTokens)) ?? (await openai(userPrompt, system, maxTokens));
+}
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
@@ -540,9 +569,27 @@ async function createPost(submolt, title, content) {
     Promise.resolve(decodeAndSolve(challenge_text)),
     geminiSolve(challenge_text),
   ]);
-  console.log(`  Claude: ${claudeAns ?? 'n/a'} | Local: ${localAns} | Gemini: ${geminiAns ?? 'n/a'}`);
+  // If both AI solvers are down, use OpenAI as a third solver
+  const openaiAns = (!claudeAns && !geminiAns)
+    ? await (async () => {
+        if (!OPENAI_KEY) return null;
+        try {
+          const r = await callOpenAI(
+            `Moltbook math verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter/minute" = unit NOT division. "one/two claw/lobster" = count word NOT math operand. Operations: lose/drop/minus/difference=subtract; times/multiply/distance=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge_text}\n\nReason briefly, end with: ##ANSWER: XX.XX`,
+            'Solve the math challenge. Your last line MUST be "##ANSWER: XX.XX".',
+            200
+          );
+          if (!r) return null;
+          const m = r.match(/##ANSWER:\s*(\d+\.?\d*)/);
+          const result = m ? parseFloat(m[1]).toFixed(2) : null;
+          console.log(`  OpenAI solve: ${result ?? 'n/a'}`);
+          return result;
+        } catch { return null; }
+      })()
+    : null;
+  console.log(`  Claude: ${claudeAns ?? 'n/a'} | Local: ${localAns} | Gemini: ${geminiAns ?? 'n/a'}${openaiAns ? ` | OpenAI: ${openaiAns}` : ''}`);
 
-  const candidates = [claudeAns, geminiAns, localAns].filter(Boolean);
+  const candidates = [claudeAns, geminiAns, localAns, openaiAns].filter(Boolean);
   const tally = {};
   for (const a of candidates) tally[a] = (tally[a] ?? 0) + 1;
   const [[topAns, topVotes]] = Object.entries(tally).sort((a, b) => b[1] - a[1]);
