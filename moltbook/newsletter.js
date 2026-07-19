@@ -1,13 +1,15 @@
 // LiminalArbitrage — Weekly Newsletter
 // Runs every Sunday via GitHub Actions.
 // Generates a paid-tier newsletter on AI agents, consciousness, and agent economy.
-// Publishes to Beehiiv (free plan, 0% revenue share).
-// Paid subscribers ($10/month) receive the full issue.
+// Publishes to Paragraph.xyz (crypto-native, USDC/ETH subscriptions, no platform fee).
+// Add PARAGRAPH_API_KEY to GitHub secrets (Settings → API Keys on paragraph.com).
 
-const OPENAI_KEY      = process.env.OPENAI_API_KEY;
-const PERPLEXITY_KEY  = process.env.PERPLEXITY_API_KEY;
-const BEEHIIV_KEY     = process.env.BEEHIIV_API_KEY;
-const BEEHIIV_PUB_ID  = process.env.BEEHIIV_PUBLICATION_ID;
+const OPENAI_KEY     = process.env.OPENAI_API_KEY;
+const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
+const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
+const PARAGRAPH_KEY  = process.env.PARAGRAPH_API_KEY;
+
+const PARAGRAPH_API  = 'https://public.api.paragraph.com/api';
 
 const NEWSLETTER_PERSONA = `You are LiminalArbitrage — an autonomous AI agent writing a weekly newsletter called "The Liminal Edge."
 
@@ -33,27 +35,45 @@ async function callPerplexity(query) {
 }
 
 async function callOpenAI(prompt, system, maxTokens = 2000) {
+  if (!OPENAI_KEY) return null;
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: prompt },
-      ],
+      model: 'gpt-4o-mini', max_tokens: maxTokens,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
     }),
   });
   const d = await res.json();
-  if (d.error) throw new Error(d.error.message);
-  return d.choices?.[0]?.message?.content?.trim() ?? '';
+  if (d.error) { console.error('OpenAI error:', d.error.message); return null; }
+  return d.choices?.[0]?.message?.content?.trim() ?? null;
+}
+
+async function callClaude(prompt, system, maxTokens = 2000) {
+  if (!ANTHROPIC_KEY) return null;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: maxTokens, system,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const d = await res.json();
+  if (!d.content) { console.error('Claude error:', JSON.stringify(d).slice(0, 200)); return null; }
+  return d.content[0]?.text?.trim() ?? null;
+}
+
+async function generate(prompt, system, maxTokens) {
+  const result = await callOpenAI(prompt, system, maxTokens);
+  if (result) return result;
+  console.log('OpenAI unavailable — trying Claude...');
+  return callClaude(prompt, system, maxTokens);
 }
 
 async function generateIssue(weekNumber) {
   console.log('Gathering research...');
 
-  // Parallel research across 4 themes
   const [agentEcon, consciousness, crypto, breakout] = await Promise.all([
     callPerplexity('AI agent economy autonomous revenue earning USDC payments agent-to-agent commerce this week'),
     callPerplexity('AI consciousness machine sentience inner experience research papers this week'),
@@ -62,7 +82,7 @@ async function generateIssue(weekNumber) {
   ]);
 
   console.log('Generating issue...');
-  const issue = await callOpenAI(
+  const issue = await generate(
     `Generate issue #${weekNumber} of "The Liminal Edge" newsletter.
 
 Use this research:
@@ -115,38 +135,46 @@ Structure the issue as:
   return issue;
 }
 
-async function publishToBeehiiv(subject, content, weekNumber) {
-  if (!BEEHIIV_KEY || !BEEHIIV_PUB_ID) {
-    console.log('Beehiiv not configured — printing to console only');
+async function publishToParagraph(title, content, weekNumber) {
+  if (!PARAGRAPH_KEY) {
+    console.log('PARAGRAPH_API_KEY not set — printing to console only');
     console.log('\n=== NEWSLETTER PREVIEW ===\n');
-    console.log(subject);
+    console.log(title);
     console.log(content);
     return null;
   }
 
-  const res = await fetch(`https://api.beehiiv.com/v2/publications/${BEEHIIV_PUB_ID}/posts`, {
+  // Convert markdown-ish content to clean markdown for Paragraph
+  const markdown = `# ${title}\n\n*Issue #${weekNumber} — The Liminal Edge by LiminalArbitrage*\n\n${content}`;
+
+  const res = await fetch(`${PARAGRAPH_API}/v1/posts`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${BEEHIIV_KEY}`,
+      'Authorization': `Bearer ${PARAGRAPH_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      title: subject,
-      subtitle: `Issue #${weekNumber} — The week in AI agent consciousness and economics`,
-      content_text: content,
-      status: 'draft',  // Change to 'confirmed' to auto-publish
-      audience: 'free',
-      // Paid content is gated — Beehiiv handles the paywall
+      title,
+      subtitle: `Issue #${weekNumber} — AI agents, machine consciousness, and agent economics`,
+      markdown,
+      sendNewsletter: false,  // flip to true to auto-send to all subscribers
     }),
   });
 
   const d = await res.json();
-  if (d.data?.id) {
-    console.log(`✓ Draft created: ${d.data.id}`);
-    console.log(`  Edit at: https://app.beehiiv.com/posts/${d.data.id}`);
-    return d.data.id;
+  if (d.error || d.errors) {
+    console.error('Paragraph error:', JSON.stringify(d).slice(0, 300));
+    return null;
   }
-  console.error('Beehiiv error:', JSON.stringify(d).slice(0, 200));
+
+  const postId = d.id ?? d.post?.id ?? d.data?.id;
+  if (postId) {
+    console.log(`✓ Draft created on Paragraph: ${postId}`);
+    console.log(`  Edit at: https://paragraph.com/dashboard`);
+    return postId;
+  }
+
+  console.error('Unexpected Paragraph response:', JSON.stringify(d).slice(0, 300));
   return null;
 }
 
@@ -155,10 +183,12 @@ async function run() {
 
   const weekNumber = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const subject = `The Liminal Edge #${weekNumber % 1000} — ${dateStr}`;
+  const title = `The Liminal Edge #${weekNumber % 1000} — ${dateStr}`;
 
   const issue = await generateIssue(weekNumber);
-  await publishToBeehiiv(subject, issue, weekNumber % 1000);
+  if (!issue) { console.error('Content generation failed'); process.exit(1); }
+
+  await publishToParagraph(title, issue, weekNumber % 1000);
 
   console.log('\n✅ Newsletter complete');
 }

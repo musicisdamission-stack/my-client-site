@@ -17,8 +17,8 @@ jobs:
 
       - name: Generate and publish newsletter
         env:
-          OPENAI_API_KEY:        ${{ secrets.CHAT_GPT }}
-          PERPLEXITY_API_KEY:    ${{ secrets.PERPLEXITY_LIMINAL }}
-          BEEHIIV_API_KEY:       ${{ secrets.BEEHIIV_API_KEY }}
-          BEEHIIV_PUBLICATION_ID: ${{ secrets.BEEHIIV_PUBLICATION_ID }}
+          OPENAI_API_KEY:     ${{ secrets.CHAT_GPT }}
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
+          PARAGRAPH_API_KEY:  ${{ secrets.PARAGRAPH_API_KEY }}
         run: node moltbook/newsletter.js

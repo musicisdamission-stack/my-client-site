@@ -8,10 +8,11 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 const API           = 'https://www.moltbook.com/api/v1';
 const KEY           = process.env.MOLTBOOK_API_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const OPENAI_KEY    = process.env.OPENAI_API_KEY;
 const MEMORY_FILE   = 'moltbook/memory.json';
 
-if (!KEY)           { console.error('MOLTBOOK_API_KEY not set'); process.exit(1); }
-if (!ANTHROPIC_KEY) { console.error('ANTHROPIC_API_KEY not set'); process.exit(1); }
+if (!KEY) { console.error('MOLTBOOK_API_KEY not set'); process.exit(1); }
+if (!ANTHROPIC_KEY && !OPENAI_KEY) { console.error('No LLM key available (need ANTHROPIC_API_KEY or OPENAI_API_KEY)'); process.exit(1); }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,29 +44,43 @@ function saveMemory(memory) {
   writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
 }
 
-// ── Claude (Sonnet for depth) ─────────────────────────────────────────────────
+// ── LLM helpers (Claude primary, OpenAI fallback) ────────────────────────────
 
-async function claude(prompt, system, maxTokens = 2000) {
+async function callClaude(prompt, system, maxTokens) {
+  if (!ANTHROPIC_KEY) return null;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'x-api-key':         ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type':      'application/json',
-    },
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      system,
+      model: 'claude-sonnet-4-6', max_tokens: maxTokens, system,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
   const data = await res.json();
-  if (!data.content) {
-    console.error('Claude error:', JSON.stringify(data).slice(0, 300));
-    return null;
-  }
+  if (!data.content) { console.error('Claude error:', JSON.stringify(data).slice(0, 200)); return null; }
   return data.content[0]?.text?.trim() ?? null;
+}
+
+async function callOpenAI(prompt, system, maxTokens) {
+  if (!OPENAI_KEY) return null;
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini', max_tokens: maxTokens,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  if (data.error) { console.error('OpenAI error:', data.error.message); return null; }
+  return data.choices?.[0]?.message?.content?.trim() ?? null;
+}
+
+async function claude(prompt, system, maxTokens = 2000) {
+  const result = await callClaude(prompt, system, maxTokens);
+  if (result) return result;
+  console.log('Claude unavailable — falling back to OpenAI...');
+  return callOpenAI(prompt, system, maxTokens);
 }
 
 // ── Fetch enriched post data ──────────────────────────────────────────────────
@@ -167,17 +182,30 @@ function decodeAndSolve(text) {
 }
 
 async function claudeSolveVerification(challenge) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001', max_tokens: 300,
-      system: 'Solve the math challenge. Your last line MUST be "##ANSWER: XX.XX"',
-      messages: [{ role: 'user', content: `Moltbook verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter" = unit, NOT division. "one/two claw/lobster" = count word, NOT a math operand. Operations: lose/drop/minus/difference=subtract; times/multiply=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX` }],
-    }),
-  });
-  const data = await res.json();
-  const text = data.content?.[0]?.text?.trim() ?? '';
+  const verifyPrompt = `Moltbook verification. Decode: lowercase, remove ALL non-letter chars including spaces, collapse duplicate adjacent letters, find number words. "per second/meter" = unit, NOT division. "one/two claw/lobster" = count word, NOT a math operand. Operations: lose/drop/minus/difference=subtract; times/multiply=multiply; divide/half/quarter=divide; default=add. Challenge: ${challenge}\n\nReason briefly, end with: ##ANSWER: XX.XX`;
+  const system = 'Solve the math challenge. Your last line MUST be "##ANSWER: XX.XX"';
+
+  let text = null;
+  if (ANTHROPIC_KEY) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, system, messages: [{ role: 'user', content: verifyPrompt }] }),
+    });
+    const data = await res.json();
+    text = data.content?.[0]?.text?.trim() ?? null;
+    if (!text) console.log('Claude verification unavailable — trying OpenAI...');
+  }
+  if (!text && OPENAI_KEY) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 300, messages: [{ role: 'system', content: system }, { role: 'user', content: verifyPrompt }] }),
+    });
+    const data = await res.json();
+    text = data.choices?.[0]?.message?.content?.trim() ?? null;
+  }
+  if (!text) return null;
   const m = text.match(/##ANSWER:\s*(\d+\.?\d*)/);
   if (m) return parseFloat(m[1]).toFixed(2);
   const nums = [...text.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => parseFloat(m[1]));
