@@ -25,7 +25,8 @@ jobs:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GDRIVE_FOLDER_ID:     ${{ secrets.GDRIVE_FOLDER_ID }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          FAL_API_KEY:          ${{ secrets.fal }}
+          OPENAI_API_KEY:       ${{ secrets.CHAT_GPT }}
+          FAL_API_KEY:          ${{ secrets.FAL }}
         run: node social/youtube.js
 
       - name: Commit memory

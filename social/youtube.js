@@ -11,7 +11,8 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 const FOLDER_ID     = process.env.GDRIVE_FOLDER_ID;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const FAL_KEY       = process.env.FAL_API_KEY;       // fal.ai for thumbnail generation
+const OPENAI_KEY    = process.env.OPENAI_API_KEY;
+const FAL_KEY       = process.env.FAL_API_KEY;
 
 const MEMORY_FILE   = 'social/youtube-memory.json';
 
@@ -64,44 +65,49 @@ async function downloadDriveFile(token, fileId, filename) {
   return path;
 }
 
-// ── Claude metadata ───────────────────────────────────────────────────────────
+// ── LLM helpers ──────────────────────────────────────────────────────────────
+
+async function llm(userPrompt, system, maxTokens = 500) {
+  if (ANTHROPIC_KEY) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, system, messages: [{ role: 'user', content: userPrompt }] }),
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text?.trim();
+    if (text) return text;
+    console.log('Claude unavailable — trying OpenAI...');
+  }
+  if (OPENAI_KEY) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: userPrompt }] }),
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  }
+  return null;
+}
+
+// ── Metadata generation ───────────────────────────────────────────────────────
 
 async function generateMetadata(filename) {
   const baseName = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
 
-  if (!ANTHROPIC_KEY) {
-    return {
-      title:       baseName,
-      description: baseName,
-      tags:        ['AI', 'technology', 'LiminalArbitrage'],
-    };
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key':         ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type':      'application/json',
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      system:     'You are a YouTube SEO expert for a channel about AI, consciousness, technology-nature harmony, music production, and autonomous living. Write compelling, authentic metadata — not clickbait.',
-      messages: [{
-        role:    'user',
-        content: `Write YouTube metadata for a video. The filename gives the topic hint: "${filename}"
+  const text = await llm(
+    `Write YouTube metadata for a video. The filename gives the topic hint: "${filename}"
 
 Format exactly:
 TITLE: [under 80 chars, compelling, specific]
 DESCRIPTION: [3 short paragraphs: what the video covers, why it matters, call to action. 150-250 words total.]
 TAGS: [12 comma-separated tags, mix of broad and specific]`,
-      }],
-    }),
-  });
+    'You are a YouTube SEO expert for a channel about AI, consciousness, technology-nature harmony, music production, and autonomous living. Write compelling, authentic metadata — not clickbait.',
+    500
+  );
 
-  const data = await res.json();
-  const text = data.content?.[0]?.text?.trim() ?? '';
+  if (!text) return { title: baseName, description: baseName, tags: ['AI', 'technology', 'LiminalArbitrage'] };
 
   const title       = text.match(/^TITLE:\s*(.+)$/m)?.[1]?.trim()           ?? baseName;
   const description = text.match(/DESCRIPTION:\s*([\s\S]*?)(?=\nTAGS:)/)?.[1]?.trim() ?? baseName;
@@ -114,21 +120,8 @@ TAGS: [12 comma-separated tags, mix of broad and specific]`,
 // ── Thumbnail generation ──────────────────────────────────────────────────────
 
 async function generateThumbnailPrompt(title, description) {
-  if (!ANTHROPIC_KEY) return null;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 150,
-      system:     'You write image generation prompts for viral YouTube thumbnails. Be specific and visual.',
-      messages: [{
-        role:    'user',
-        content: `Write a Fal.ai image prompt for a YouTube thumbnail for this video:
+  return llm(
+    `Write a Fal.ai image prompt for a YouTube thumbnail for this video:
 Title: "${title}"
 Topic: "${description.slice(0, 200)}"
 
@@ -138,11 +131,9 @@ Style: dark background with bright accent colors (electric blue, gold, or neon),
 photorealistic or hyper-detailed illustration.
 
 Respond with ONLY the image prompt, nothing else.`,
-      }],
-    }),
-  });
-  const data = await res.json();
-  return data.content?.[0]?.text?.trim() ?? null;
+    'You write image generation prompts for viral YouTube thumbnails. Be specific and visual.',
+    150
+  );
 }
 
 async function generateThumbnail(title, description) {
