@@ -182,3 +182,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-07-20 | NEWCAPABILITY | SKIP
+**Finding:** The most significant **counterintuitive AI research finding** from the last week is that **giving AI models more time to "think" often makes them worse**, a phenomenonAnthropic researchers dubbed **"i
+**Architect:** n/a
+**Skeptic:** n/a
+---
