@@ -326,9 +326,10 @@ const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.5-flash', p, 
 const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t); // Flash-Lite 3.1 — mechanical/structured tasks
 const openai   = (p, s = PERSONA, t = 400) => callOpenAI(p, s, t);                          // fallback when Gemini+Claude credits depleted
 
-// HIGH: brand voice — Sonnet primary, Haiku fallback, OpenAI last resort
+// HIGH: brand voice — Sonnet primary, Gemini Flash fallback, Haiku fallback, OpenAI last resort
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
   return (await sonnet(userPrompt, system, maxTokens))
+      ?? (await gemFlash(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
       ?? (await openai(userPrompt, system, maxTokens));
 }
