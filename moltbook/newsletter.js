@@ -67,12 +67,12 @@ async function callClaude(prompt, system, maxTokens = 2000) {
 
 async function callGemini(prompt, system, maxTokens) {
   if (!GEMINI_KEY) return null;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: system ? `${system}\n\n${prompt}` : prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens },
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
     }),
   });
   const d = await res.json();
