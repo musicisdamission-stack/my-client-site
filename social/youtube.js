@@ -15,6 +15,7 @@ const OPENAI_KEY    = process.env.OPENAI_API_KEY;
 const FAL_KEY       = process.env.FAL_API_KEY;
 
 const MEMORY_FILE   = 'social/youtube-memory.json';
+const MAX_PER_RUN   = 2;  // uploads per day — increase to post more aggressively
 
 if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !FOLDER_ID) {
   console.error('Missing required env vars. Need: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GDRIVE_FOLDER_ID');
@@ -43,13 +44,26 @@ async function getAccessToken() {
 
 async function listDriveVideos(token) {
   const q = `'${FOLDER_ID}' in parents and mimeType contains 'video/' and trashed=false`;
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime)&orderBy=createdTime`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const data = await res.json();
-  if (data.error) throw new Error(`Drive list error: ${data.error.message}`);
-  return data.files ?? [];
+  const all = [];
+  let pageToken = null;
+
+  do {
+    const url = new URL('https://www.googleapis.com/drive/v3/files');
+    url.searchParams.set('q', q);
+    url.searchParams.set('fields', 'nextPageToken,files(id,name,size,createdTime)');
+    url.searchParams.set('orderBy', 'createdTime');
+    url.searchParams.set('pageSize', '100');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+
+    const res  = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (data.error) throw new Error(`Drive list error: ${data.error.message}`);
+
+    all.push(...(data.files ?? []));
+    pageToken = data.nextPageToken ?? null;
+  } while (pageToken);
+
+  return all;
 }
 
 async function downloadDriveFile(token, fileId, filename) {
@@ -275,15 +289,16 @@ async function run() {
     return;
   }
   const newFiles = files.filter(f => !memory.uploadedIds.includes(f.id));
+  const toUpload = newFiles.slice(0, MAX_PER_RUN);
 
-  console.log(`Drive folder: ${files.length} video(s) found, ${newFiles.length} new\n`);
+  console.log(`Drive folder: ${files.length} total, ${newFiles.length} remaining, uploading ${toUpload.length} today\n`);
 
-  if (!newFiles.length) {
-    console.log('Nothing to upload.');
+  if (!toUpload.length) {
+    console.log('Nothing to upload — queue empty.');
     return;
   }
 
-  for (const file of newFiles) {
+  for (const file of toUpload) {
     console.log(`Processing: ${file.name}`);
     let tmpPath = null;
     try {
