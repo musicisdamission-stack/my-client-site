@@ -17,7 +17,6 @@ jobs:
 
       - name: Generate and publish newsletter
         env:
-          OPENAI_API_KEY:     ${{ secrets.CHAT_GPT }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}

@@ -81,13 +81,10 @@ async function callGemini(prompt, system, maxTokens) {
 }
 
 async function generate(prompt, system, maxTokens) {
-  const result = await callOpenAI(prompt, system, maxTokens);
-  if (result) return result;
-  console.log('OpenAI unavailable — trying Claude...');
-  const claude = await callClaude(prompt, system, maxTokens);
-  if (claude) return claude;
-  console.log('Claude unavailable — trying Gemini...');
-  return callGemini(prompt, system, maxTokens);
+  const gemini = await callGemini(prompt, system, maxTokens);
+  if (gemini) return gemini;
+  console.log('Gemini unavailable — trying Claude...');
+  return callClaude(prompt, system, maxTokens);
 }
 
 async function generateIssue(weekNumber) {
