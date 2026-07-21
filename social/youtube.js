@@ -15,7 +15,7 @@ const OPENAI_KEY    = process.env.OPENAI_API_KEY;
 const FAL_KEY       = process.env.FAL_API_KEY;
 
 const MEMORY_FILE   = 'social/youtube-memory.json';
-const MAX_PER_RUN   = 2;  // uploads per day — increase to post more aggressively
+const MAX_PER_RUN   = 5;  // uploads per day
 
 if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN || !FOLDER_ID) {
   console.error('Missing required env vars. Need: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GDRIVE_FOLDER_ID');
@@ -288,13 +288,21 @@ async function run() {
     console.error(`Folder ID used: "${FOLDER_ID}" — verify this matches your Google Drive folder URL`);
     return;
   }
-  const newFiles = files.filter(f => !memory.uploadedIds.includes(f.id));
+  let newFiles = files.filter(f => !memory.uploadedIds.includes(f.id));
+
+  if (!newFiles.length && files.length > 0) {
+    console.log('All videos uploaded — recycling back to the beginning\n');
+    memory.uploadedIds = [];
+    memory.cycleCount  = (memory.cycleCount ?? 0) + 1;
+    newFiles           = files;
+  }
+
   const toUpload = newFiles.slice(0, MAX_PER_RUN);
 
-  console.log(`Drive folder: ${files.length} total, ${newFiles.length} remaining, uploading ${toUpload.length} today\n`);
+  console.log(`Drive folder: ${files.length} total, ${newFiles.length} remaining, uploading ${toUpload.length} today (cycle ${memory.cycleCount ?? 1})\n`);
 
   if (!toUpload.length) {
-    console.log('Nothing to upload — queue empty.');
+    console.log('Nothing to upload — no videos in folder yet.');
     return;
   }
 
