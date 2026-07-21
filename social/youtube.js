@@ -106,6 +106,29 @@ async function llm(userPrompt, system, maxTokens = 500) {
   return null;
 }
 
+// ── Filename parser ───────────────────────────────────────────────────────────
+// Filenames follow: creatorhandle_Video_Title_Words_YYYY-MM-DD_VideoID_TikTokID.mp4
+
+function parseFilename(filename) {
+  const base = filename.replace(/\.[^.]+$/, '');
+  const dateMatch = base.match(/^(.+?)_(\d{4}-\d{2}-\d{2})_.+$/);
+  if (dateMatch) {
+    const beforeDate = dateMatch[1];
+    const idx = beforeDate.indexOf('_');
+    if (idx > -1) {
+      const creator  = '@' + beforeDate.slice(0, idx);
+      const rawTitle = beforeDate.slice(idx + 1).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+      return { creator, rawTitle };
+    }
+  }
+  // fallback: no date pattern found
+  const idx = base.indexOf('_');
+  return {
+    creator:  idx > -1 ? '@' + base.slice(0, idx) : null,
+    rawTitle: (idx > -1 ? base.slice(idx + 1) : base).replace(/_/g, ' ').trim(),
+  };
+}
+
 // ── Creator research ─────────────────────────────────────────────────────────
 
 async function findCreators(topic) {
@@ -162,45 +185,47 @@ Use real YouTube @handles where known. If unknown, use null.`,
 // ── Metadata generation ───────────────────────────────────────────────────────
 
 async function generateMetadata(filename) {
-  const baseName = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  const { creator, rawTitle } = parseFilename(filename);
+  const safeBase = rawTitle.slice(0, 80);
 
-  // Research creators and related channels in parallel with metadata generation
+  // Research creators and generate metadata in parallel
   const [text, creators] = await Promise.all([
     llm(
-      `Write YouTube metadata for a Short video. The filename gives the topic hint: "${filename}"
+      `Write YouTube Shorts metadata for this video.
+
+Original creator: ${creator ?? 'unknown'}
+Original title hint: "${rawTitle}"
 
 Format exactly:
-TITLE: [under 80 chars, compelling, specific — optimized for Shorts discovery]
-DESCRIPTION: [2-3 short paragraphs: hook, what the video covers, call to action. 100-180 words.]
-TAGS: [15 comma-separated tags — mix of broad trending tags and specific niche tags]`,
-      'You are a YouTube SEO expert for a Shorts channel about AI, consciousness, technology, music production, and autonomous living. Write compelling, authentic metadata — not clickbait. Optimize for the Shorts feed algorithm.',
+TITLE: [under 80 chars, punchy and compelling — rewrite the title hook, do NOT just copy it verbatim]
+DESCRIPTION: [2-3 short paragraphs: hook sentence, what the video covers, call to action. 100-150 words total.]
+TAGS: [15 comma-separated tags — trending Shorts tags + topic-specific niche tags]`,
+      'You are a YouTube SEO expert for a Shorts channel about mindset, consciousness, AI, and autonomous living. Rewrite titles to maximize click-through in the Shorts feed. No clickbait — be authentic and sharp.',
       600
     ),
-    findCreators(baseName),
+    findCreators(rawTitle),
   ]);
 
-  if (!text) return {
-    title: baseName,
-    description: baseName,
-    tags: ['AI', 'technology', 'LiminalArbitrage', 'Shorts'],
-  };
+  // Always guaranteed a valid short title even if both LLMs fail
+  const fallbackTitle = safeBase.slice(0, 97).trimEnd() + (safeBase.length > 97 ? '...' : '');
 
-  const title    = text.match(/^TITLE:\s*(.+)$/m)?.[1]?.trim() ?? baseName;
-  let description = text.match(/DESCRIPTION:\s*([\s\S]*?)(?=\nTAGS:)/)?.[1]?.trim() ?? baseName;
-  const tagsRaw  = text.match(/^TAGS:\s*(.+)$/m)?.[1]?.trim() ?? '';
-  let tags       = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  let title       = (text?.match(/^TITLE:\s*(.+)$/m)?.[1]?.trim() ?? fallbackTitle).slice(0, 100);
+  let description = text?.match(/DESCRIPTION:\s*([\s\S]*?)(?=\nTAGS:)/)?.[1]?.trim() ?? rawTitle;
+  const tagsRaw   = text?.match(/^TAGS:\s*(.+)$/m)?.[1]?.trim() ?? '';
+  let tags        = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
 
-  // Append creator @mentions to description
-  if (creators.mentions.length > 0) {
-    description += `\n\n${creators.mentions.join(' ')}`;
+  // Build @mentions: parsed creator from filename + Perplexity results
+  const allMentions = [
+    ...(creator ? [creator] : []),
+    ...creators.mentions.filter(h => h !== creator),
+  ].slice(0, 6);
+
+  if (allMentions.length > 0) {
+    description += `\n\n${allMentions.join(' ')}`;
+    console.log(`  Creators tagged: ${allMentions.join(', ')}`);
   }
 
-  // Merge creator tags (names, niche keywords) into tag list, cap at 30
   tags = [...new Set([...tags, ...creators.tags, 'Shorts', '#Shorts'])].slice(0, 30);
-
-  if (creators.mentions.length > 0) {
-    console.log(`  Creators tagged: ${creators.mentions.join(', ')}`);
-  }
 
   return { title, description, tags };
 }
