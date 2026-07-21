@@ -6,6 +6,7 @@
 
 const OPENAI_KEY     = process.env.OPENAI_API_KEY;
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
+const GEMINI_KEY     = process.env.GEMINI_API_KEY;
 const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
 const PARAGRAPH_KEY  = process.env.PARAGRAPH_API_KEY;
 
@@ -64,11 +65,29 @@ async function callClaude(prompt, system, maxTokens = 2000) {
   return d.content[0]?.text?.trim() ?? null;
 }
 
+async function callGemini(prompt, system, maxTokens) {
+  if (!GEMINI_KEY) return null;
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: system ? `${system}\n\n${prompt}` : prompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+  });
+  const d = await res.json();
+  if (d.error) { console.error('Gemini error:', d.error.message); return null; }
+  return d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+}
+
 async function generate(prompt, system, maxTokens) {
   const result = await callOpenAI(prompt, system, maxTokens);
   if (result) return result;
   console.log('OpenAI unavailable — trying Claude...');
-  return callClaude(prompt, system, maxTokens);
+  const claude = await callClaude(prompt, system, maxTokens);
+  if (claude) return claude;
+  console.log('Claude unavailable — trying Gemini...');
+  return callGemini(prompt, system, maxTokens);
 }
 
 async function generateIssue(weekNumber) {
