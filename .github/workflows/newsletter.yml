@@ -20,5 +20,5 @@ jobs:
           OPENAI_API_KEY:     ${{ secrets.CHAT_GPT }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
-          PARAGRAPH_API_KEY:  ${{ secrets.PARAGRAPH_API_KEY }}
+          PARAGRAPH_API_KEY:  ${{ secrets.PARAGRAPH }}
         run: node moltbook/newsletter.js
