@@ -10,9 +10,10 @@ const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 const FOLDER_ID     = (process.env.GDRIVE_FOLDER_ID ?? '').trim();
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const OPENAI_KEY    = process.env.OPENAI_API_KEY;
-const FAL_KEY       = process.env.FAL_API_KEY;
+const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
+const OPENAI_KEY     = process.env.OPENAI_API_KEY;
+const PERPLEXITY_KEY = process.env.PERPLEXITY_API_KEY;
+const FAL_KEY        = process.env.FAL_API_KEY;
 
 const MEMORY_FILE   = 'social/youtube-memory.json';
 const MAX_PER_RUN   = 5;  // uploads per day
@@ -105,28 +106,101 @@ async function llm(userPrompt, system, maxTokens = 500) {
   return null;
 }
 
+// ── Creator research ─────────────────────────────────────────────────────────
+
+async function findCreators(topic) {
+  if (!PERPLEXITY_KEY) return { mentions: [], tags: [] };
+
+  try {
+    const res = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${PERPLEXITY_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [
+          {
+            role: 'system',
+            content: 'Return only a JSON object. No markdown, no explanation.',
+          },
+          {
+            role: 'user',
+            content: `For a YouTube Short about: "${topic}"
+
+Find:
+1. The original creator or source of this content (if it's a clip, trend, or remix — who made the original?)
+2. 3-5 highly relevant YouTube channels or public figures whose audience would love this video
+
+Return exactly this JSON:
+{
+  "original": "@YouTubeHandle or null",
+  "related": ["@Handle1", "@Handle2", "@Handle3"],
+  "tags": ["CreatorName1", "CreatorName2", "topic keyword", "niche keyword"]
+}
+
+Use real YouTube @handles where known. If unknown, use null.`,
+          },
+        ],
+        max_tokens: 300,
+      }),
+    });
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim() ?? '';
+    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? '{}');
+
+    const mentions = [
+      ...(json.original ? [json.original] : []),
+      ...(json.related ?? []),
+    ].filter(h => h && h.startsWith('@')).slice(0, 5);
+
+    return { mentions, tags: json.tags ?? [] };
+  } catch {
+    return { mentions: [], tags: [] };
+  }
+}
+
 // ── Metadata generation ───────────────────────────────────────────────────────
 
 async function generateMetadata(filename) {
   const baseName = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
 
-  const text = await llm(
-    `Write YouTube metadata for a video. The filename gives the topic hint: "${filename}"
+  // Research creators and related channels in parallel with metadata generation
+  const [text, creators] = await Promise.all([
+    llm(
+      `Write YouTube metadata for a Short video. The filename gives the topic hint: "${filename}"
 
 Format exactly:
-TITLE: [under 80 chars, compelling, specific]
-DESCRIPTION: [3 short paragraphs: what the video covers, why it matters, call to action. 150-250 words total.]
-TAGS: [12 comma-separated tags, mix of broad and specific]`,
-    'You are a YouTube SEO expert for a channel about AI, consciousness, technology-nature harmony, music production, and autonomous living. Write compelling, authentic metadata — not clickbait.',
-    500
-  );
+TITLE: [under 80 chars, compelling, specific — optimized for Shorts discovery]
+DESCRIPTION: [2-3 short paragraphs: hook, what the video covers, call to action. 100-180 words.]
+TAGS: [15 comma-separated tags — mix of broad trending tags and specific niche tags]`,
+      'You are a YouTube SEO expert for a Shorts channel about AI, consciousness, technology, music production, and autonomous living. Write compelling, authentic metadata — not clickbait. Optimize for the Shorts feed algorithm.',
+      600
+    ),
+    findCreators(baseName),
+  ]);
 
-  if (!text) return { title: baseName, description: baseName, tags: ['AI', 'technology', 'LiminalArbitrage'] };
+  if (!text) return {
+    title: baseName,
+    description: baseName,
+    tags: ['AI', 'technology', 'LiminalArbitrage', 'Shorts'],
+  };
 
-  const title       = text.match(/^TITLE:\s*(.+)$/m)?.[1]?.trim()           ?? baseName;
-  const description = text.match(/DESCRIPTION:\s*([\s\S]*?)(?=\nTAGS:)/)?.[1]?.trim() ?? baseName;
-  const tagsRaw     = text.match(/^TAGS:\s*(.+)$/m)?.[1]?.trim()            ?? '';
-  const tags        = tagsRaw.split(',').map(t => t.trim()).filter(Boolean).slice(0, 15);
+  const title    = text.match(/^TITLE:\s*(.+)$/m)?.[1]?.trim() ?? baseName;
+  let description = text.match(/DESCRIPTION:\s*([\s\S]*?)(?=\nTAGS:)/)?.[1]?.trim() ?? baseName;
+  const tagsRaw  = text.match(/^TAGS:\s*(.+)$/m)?.[1]?.trim() ?? '';
+  let tags       = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+  // Append creator @mentions to description
+  if (creators.mentions.length > 0) {
+    description += `\n\n${creators.mentions.join(' ')}`;
+  }
+
+  // Merge creator tags (names, niche keywords) into tag list, cap at 30
+  tags = [...new Set([...tags, ...creators.tags, 'Shorts', '#Shorts'])].slice(0, 30);
+
+  if (creators.mentions.length > 0) {
+    console.log(`  Creators tagged: ${creators.mentions.join(', ')}`);
+  }
 
   return { title, description, tags };
 }
