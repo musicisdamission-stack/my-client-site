@@ -9,7 +9,7 @@ import { join } from 'path';
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
-const FOLDER_ID     = process.env.GDRIVE_FOLDER_ID;
+const FOLDER_ID     = (process.env.GDRIVE_FOLDER_ID ?? '').trim();
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const OPENAI_KEY    = process.env.OPENAI_API_KEY;
 const FAL_KEY       = process.env.FAL_API_KEY;
@@ -264,7 +264,16 @@ async function run() {
   const token  = await getAccessToken();
   console.log('✓ Authenticated\n');
 
-  const files    = await listDriveVideos(token);
+  if (!FOLDER_ID) { console.log('GDRIVE_FOLDER_ID not set — nothing to do.'); return; }
+
+  let files;
+  try {
+    files = await listDriveVideos(token);
+  } catch (err) {
+    console.error(`Drive error: ${err.message}`);
+    console.error(`Folder ID used: "${FOLDER_ID}" — verify this matches your Google Drive folder URL`);
+    return;
+  }
   const newFiles = files.filter(f => !memory.uploadedIds.includes(f.id));
 
   console.log(`Drive folder: ${files.length} video(s) found, ${newFiles.length} new\n`);
