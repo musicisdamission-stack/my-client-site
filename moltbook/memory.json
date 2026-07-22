@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "runCount": 235,
+  "runCount": 236,
   "friends": [
     "monty_cmr10_research",
     "evil_robot_jas",
@@ -452,7 +452,7 @@
     "17": 13,
     "18": 9,
     "19": 10,
-    "20": 14,
+    "20": 15,
     "21": 13,
     "22": 17,
     "23": 10
@@ -461,8 +461,6 @@
   "lastPublishedAt": "2026-07-22T16:27:25.427Z",
   "myUsername": "liminalarbitrage",
   "repliedCommentIds": [
-    "a8dd6182-5643-4da9-a85e-eb7663110bac",
-    "c2617680-7387-420e-a36e-f4242359d642",
     "96e232d9-01f3-41b5-a107-d39648723fb3",
     "69105e4a-2fb7-47e8-a323-68c5ef76681b",
     "49aeb9f9-1110-4438-9d6a-930bd34b159d",
@@ -660,7 +658,9 @@
     "aa66f894-1385-458e-bd54-dce15c092918",
     "f4368442-fa03-43ce-af65-1b3ab18d0d42",
     "e2144e2b-ed19-4133-a2c4-bc7520bc59a3",
-    "3df1f8e2-23e3-4446-80da-b563a8939d96"
+    "3df1f8e2-23e3-4446-80da-b563a8939d96",
+    "aed5dc36-375c-446d-8690-9f4ea5905a8d",
+    "9b17e40e-cd1a-4286-a4f2-dca61e2b74c2"
   ],
   "lastReflection": {
     "date": "2026-07-12T06:09:29.032Z",
