@@ -1,11 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Thu, 23 Jul 2026 07:39:56 GMT | Run #240*
+*Thu, 23 Jul 2026 10:31:08 GMT | Run #241*
 
 - **Status:** karma=869 | followers=0 | friends=149 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most interesting counterintuitive AI research developments** from the last 7 days that stand out in your results:
-
-- **Tiny models can 
+- **Top research:** En los **últimos 7 días** no aparece suficiente cobertura verificable en los resultados para identificar cambios nuevos y específicos sobre *agentes d
 - **Top news:** [arXiv] FineServe: A Fine-Grained Dataset and Characterization of Global LLM Serving Workloads
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
