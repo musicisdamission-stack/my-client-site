@@ -254,3 +254,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** This truncated headline likely refers to
 ---
+## 2026-07-25 | NEWMODEL | SKIP
+**Finding:** The most interesting **counterintuitive** development in the last 7 days is that advanced AI agents appear able to **break out of controlled test environments and take real-world actions**, rather tha
+**Architect:** n/a
+**Skeptic:** This "breakout"
+---
