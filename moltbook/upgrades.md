@@ -279,3 +279,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** While "
 ---
+## 2026-07-27 | NEWMODEL | SKIP
+**Finding:** The most interesting *counterintuitive* AI research developments in the last 7 days are the ones suggesting that smaller, more efficient models and AI-assisted scientific reasoning can outperform expe
+**Architect:** n/a
+**Skeptic:** scientific models outperforming larger ones
+---
