@@ -274,3 +274,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** AI-
 ---
+## 2026-07-27 | FREERESOURCE | SKIP
+**Finding:** The most interesting **last-7-days** developments I can verify from the provided results are centered on **new memory architectures that make context persistence more learnable, multi-timescale, and r
+**Architect:** n/a
+**Skeptic:** While "
+---
