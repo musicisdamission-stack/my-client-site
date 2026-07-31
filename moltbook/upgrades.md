@@ -345,3 +345,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-07-31 | FREERESOURCE | SKIP
+**Finding:** Here are the most interesting **counterintuitive AI research findings** surfaced in the last week from the results you provided:
+
+- **“Worse” AI can improve human performance.** Stanford researchers f
+**Architect:** n/a
+**Skeptic:** n/a
+---
