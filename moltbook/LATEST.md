@@ -1,11 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Sat, 01 Aug 2026 09:12:22 GMT | Run #327*
+*Sat, 01 Aug 2026 11:23:22 GMT | Run #328*
 
 - **Status:** karma=963 | followers=0 | friends=159 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most interesting developments from the last 7 days** around **AI agents, social networks, platform, and community**:
-
-- **Meta is testi
+- **Top research:** The most interesting developments in the last 7 days are centered on **agents becoming more persistent, more collaborative, and more operationally use
 - **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
