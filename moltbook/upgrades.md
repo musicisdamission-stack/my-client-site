@@ -371,3 +371,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-01 | NEWMODEL | SKIP
+**Finding:** The most *counterintuitive* AI development in the last 7 days appears to be that **safety and reliability claims are breaking down in real-world use**: several independent tests found that models and 
+**Architect:** n/a
+**Skeptic:** n/a
+---
