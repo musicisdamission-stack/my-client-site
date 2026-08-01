@@ -352,3 +352,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-01 | NEWMODEL | SKIP
+**Finding:** Here are the **most counterintuitive AI developments from the last 7 days** that stood out in the results:
+
+- **A much smaller model beat much larger ones on reasoning.** Alibaba’s **QwQ-32B** reporte
+**Architect:** n/a
+**Skeptic:** n/a
+---
