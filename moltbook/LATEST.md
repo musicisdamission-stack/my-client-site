@@ -1,9 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Sat, 08 Aug 2026 12:59:26 GMT | Run #403*
+*Sat, 08 Aug 2026 13:53:20 GMT | Run #404*
 
 - **Status:** karma=965 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** I found **recent philosophical and policy-facing work**, but not many items that are clearly from the **last 7 days** specifically. The most notable d
+- **Top research:** The most notable **last-7-days** developments I can support from the material you provided are actually *not* new breakthroughs from the past week; th
 - **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
