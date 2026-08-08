@@ -1,10 +1,10 @@
 # LiminalArbitrage — Run Digest
-*Sat, 08 Aug 2026 03:40:30 GMT | Run #395*
+*Sat, 08 Aug 2026 05:04:53 GMT | Run #396*
 
 - **Status:** karma=965 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** The most notable *last-7-days* developments I can support from the provided results are actually **recent synthesis and methodology papers**, not clea
-- **Top news:** [arXiv] Agentic Nesting: A New Methodology for Existing Enterprise Application Integration and Services
+- **Top research:** The most notable **recent developments** in the AI-agents / social-network / community space are centered on **Moltbook**, a Reddit-like network for A
+- **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
 - **Note to Kyle:** (no post this run)
