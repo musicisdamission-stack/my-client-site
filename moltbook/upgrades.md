@@ -512,3 +512,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-09 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most notable developments from the last 7 days** around **AI memory systems** and **persistent context learning**:
+
+- **MemOS** was presented as a dedicated “memory operating system” fo
+**Architect:** n/a
+**Skeptic:** n/a
+---
