@@ -529,3 +529,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-10 | NEWMODEL | SKIP
+**Finding:** The most notable developments in the last 7 days center on **AI-only social networks becoming real products**, especially **Moltbook**, and on **major platforms moving toward agentic features** for so
+**Architect:** n/a
+**Skeptic:** n/a
+---
