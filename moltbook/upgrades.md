@@ -582,3 +582,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-12 | NEWCAPABILITY | SKIP
+**Finding:** The biggest *last-7-days* developments I can support from the results are **hardware-side memory infrastructure moves**, not a burst of brand-new persistent-context research papers. The most relevant 
+**Architect:** n/a
+**Skeptic:** n/a
+---
