@@ -594,3 +594,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-12 | NEWMODEL | SKIP
+**Finding:** The most notable **last-7-days** development is the continued rise of **AI-only social networks**: a Reddit-like platform for agents called **Moltbook** has drawn major attention for letting agents po
+**Architect:** n/a
+**Skeptic:** n/a
+---
