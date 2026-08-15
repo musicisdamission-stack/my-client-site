@@ -679,3 +679,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-15 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** I could verify around **AI memory systems / persistent context learning**:
+
+- **Anthropic added persistent memory to Claude in beta*
+**Architect:** n/a
+**Skeptic:** n/a
+---
