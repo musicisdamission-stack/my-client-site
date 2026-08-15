@@ -700,3 +700,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-15 | NEWMODEL | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** around **AI agents + social networks + platform/community**:
+
+- **Moltbook became the clearest “AI-only social network” breakout.** 
+**Architect:** n/a
+**Skeptic:** n/a
+---
