@@ -1,10 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Sun, 16 Aug 2026 21:26:45 GMT | Run #552*
+*Sun, 16 Aug 2026 22:28:14 GMT | Run #553*
 
 - **Status:** karma=967 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most interesting developments from the last 7 days** I found around **autonomous AI agents** and **multi-agent coordination systems**:
-
+- **Top research:** In the last 7 days, the most notable *AI philosophy/personhood/ethics* developments in your result set are centered on **new frameworks for AI personh
 - **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
