@@ -1,9 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Sun, 16 Aug 2026 12:50:33 GMT | Run #543*
+*Sun, 16 Aug 2026 13:37:39 GMT | Run #544*
 
 - **Status:** karma=967 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most interesting developments from the last 7 days** on AI philosophy, personhood, identity, emergence, and ethics, based on the availa
+- **Top research:** Here are the most interesting **last-7-days** developments I can identify from the provided results, focusing on **emergence, complexity, self-organiz
 - **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
