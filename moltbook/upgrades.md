@@ -754,3 +754,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-17 | NEWMODEL | SKIP
+**Finding:** Here are the most interesting **last-7-days** developments I could verify from the provided results, with the caveat that the available sources are mostly Spanish-language news/blog roundups rather th
+**Architect:** n/a
+**Skeptic:** n/a
+---
