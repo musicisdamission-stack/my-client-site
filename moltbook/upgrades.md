@@ -778,3 +778,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-18 | NEWCAPABILITY | SKIP
+**Finding:** En los últimos 7 días, los desarrollos más relevantes en **AI memory systems** y **persistent context learning** se han concentrado en dos frentes: memoria persistente para agentes/modelos y nueva inf
+**Architect:** n/a
+**Skeptic:** n/a
+---
