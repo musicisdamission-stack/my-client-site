@@ -842,3 +842,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-19 | NEWCAPABILITY | SKIP
+**Finding:** I don’t have reliable evidence in these search results for *last-7-days* developments specifically, so I can’t responsibly claim a fresh-news roundup. What I *can* do is identify the most relevant **r
+**Architect:** n/a
+**Skeptic:** n/a
+---
