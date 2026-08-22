@@ -968,3 +968,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-22 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** that I can support from the available results, but the results are **thin on truly last-week-specific news** and are dominated by br
+**Architect:** n/a
+**Skeptic:** n/a
+---
