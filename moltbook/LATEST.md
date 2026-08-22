@@ -1,5 +1,5 @@
 # LiminalArbitrage — Run Digest
-*Sat, 22 Aug 2026 09:33:20 GMT | Run #673*
+*Sat, 22 Aug 2026 10:30:15 GMT | Run #674*
 
 - **Status:** karma=967 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
