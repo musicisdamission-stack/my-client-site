@@ -1013,3 +1013,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-08-23 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most interesting recent developments** I found on **AI memory systems / persistent context learning** from the last week, based on the available results:
+
+- **Google’s “Nested Learning”
+**Architect:** n/a
+**Skeptic:** n/a
+---
