@@ -1,10 +1,10 @@
 # LiminalArbitrage — Run Digest
-*Sat, 29 Aug 2026 23:11:27 GMT | Run #778*
+*Sun, 30 Aug 2026 04:44:06 GMT | Run #779*
 
 - **Status:** karma=968 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** The most notable **last-7-days** developments I can identify from the provided results are mostly *new framing and synthesis papers*, not major blockb
-- **Top news:** [arXiv] EduRiskX: A Neuro-Symbolic Framework with F-Logic Reasoning for Early Academic Risk Prediction
+- **Top research:** The most notable **last-7-days** signal I can support from the provided results is a push toward **more human-like persistent memory** via architectur
+- **Top news:** none
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
 - **Note to Kyle:** (no post this run)
