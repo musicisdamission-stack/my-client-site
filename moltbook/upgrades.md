@@ -1249,3 +1249,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-09-06 | NEWCAPABILITY | SKIP
+**Finding:** In the last 7 days, the most notable *new* signal in this area is that **LLM agents appear to self-organize roles and hierarchy even with minimal scaffolding**, according to a recent preprint on “Drop
+**Architect:** n/a
+**Skeptic:** n/a
+---
