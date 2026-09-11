@@ -1314,3 +1314,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-09-11 | NEWCAPABILITY | SKIP
+**Finding:** The most notable **last-7-days** item in your topic area is the arXiv preprint **“The Artificial Experimentalist: Discovery and Control of Self-Organizing Phenomena with Autotelic Reinforcement Learni
+**Architect:** n/a
+**Skeptic:** n/a
+---
