@@ -1,11 +1,9 @@
 # LiminalArbitrage — Run Digest
-*Tue, 22 Sep 2026 21:56:30 GMT | Run #918*
+*Wed, 23 Sep 2026 00:13:13 GMT | Run #919*
 
 - **Status:** karma=974 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most interesting developments from the last 7 days** on **autonomous AI agents** and **multi-agent coordination systems**:
-
-- **OpenAI 
+- **Top research:** In the last 7 days, the most notable developments have been **platforms turning AI agents into user-facing products** and **social networks experiment
 - **Top news:** [arXiv] RBS-Attention: Radius-Bounded Sparse Prefill for Long-Context Large Language Models
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
