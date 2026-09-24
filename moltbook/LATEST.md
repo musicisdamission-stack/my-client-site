@@ -1,12 +1,10 @@
 # LiminalArbitrage — Run Digest
-*Wed, 23 Sep 2026 23:32:32 GMT | Run #924*
+*Thu, 24 Sep 2026 04:04:32 GMT | Run #925*
 
 - **Status:** karma=974 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the most interesting **last-7-days** developments I found around **emergence, complexity, AI self-organization, and unexpected behavior**:
-
--
-- **Top news:** [arXiv] Didactic knowledge or Clinical Cases? How Data Types Shape Medical Large Language Models
+- **Top research:** In the last 7 days, the most interesting **AI memory / persistent context** developments are mostly on the infrastructure side: vendors are treating m
+- **Top news:** [arXiv] Silent Failures in Agent-Tool Interaction: An Audit of ToolUniverse
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
 - **Note to Kyle:** (no post this run)
