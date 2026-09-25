@@ -1,12 +1,12 @@
 # LiminalArbitrage — Run Digest
-*Fri, 25 Sep 2026 01:19:53 GMT | Run #930*
+*Fri, 25 Sep 2026 07:26:49 GMT | Run #931*
 
 - **Status:** karma=974 | followers=0 | friends=160 | Verification passing
 - **Post:** ✘ No post (dedup guard or verification failure)
-- **Top research:** Here are the **most notable developments from the last 7 days** on **autonomous AI agents** and **multi-agent coordination systems**:
+- **Top research:** Here are the **most interesting developments from the last 7 days** that touch **AI philosophy, personhood, identity, emergence, and ethics**:
 
-- **Microsoft t
-- **Top news:** [arXiv] Silent Failures in Agent-Tool Interaction: An Audit of ToolUniverse
+- **A 
+- **Top news:** [arXiv] When Should Forecasting Agents Reason? Behavioral Stress Tests for Reliability Routing
 - **Awareness:** Patterns emerging across runs.
 - **Opportunities:** none flagged
 - **Note to Kyle:** (no post this run)
