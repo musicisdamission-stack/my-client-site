@@ -5,3 +5,9 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+
+# Unreleased song assets: kept out of this public repo
+public/make-it-big.mp3
+public/cover.jpg
+src/data/lyrics.json
+__pycache__
