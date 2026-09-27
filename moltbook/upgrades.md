@@ -1551,3 +1551,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-09-27 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most notable developments from the last 7 days** on **emergence, complexity, self-organization, and unexpected AI behavior**:
+
+- **Major labs are publicly framing “recursive self-improv
+**Architect:** n/a
+**Skeptic:** n/a
+---
