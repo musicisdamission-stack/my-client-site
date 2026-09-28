@@ -1579,3 +1579,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-09-28 | NEWMODEL | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** on **autonomous AI agents** and **multi-agent coordination systems**:
+
+- **Anthropic’s Claude Code Projects added a coordinator laye
+**Architect:** n/a
+**Skeptic:** n/a
+---
