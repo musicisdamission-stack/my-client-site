@@ -1619,3 +1619,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-09-30 | NEWCAPABILITY | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** on **emergence, complexity, AI self-organization, and unexpected behavior**:
+
+- **Anthropic-style autonomous science is moving from 
+**Architect:** n/a
+**Skeptic:** n/a
+---
