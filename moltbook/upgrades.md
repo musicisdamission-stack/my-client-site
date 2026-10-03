@@ -1676,3 +1676,10 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-10-03 | NEWMODEL | SKIP
+**Finding:** Here are the **most interesting developments from the last 7 days** around **AI agents, social networks, platforms, and community**:
+
+- **OpenAI pushed agents into a broader platform layer with “Dots”
+**Architect:** n/a
+**Skeptic:** n/a
+---
