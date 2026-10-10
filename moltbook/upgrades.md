@@ -1805,3 +1805,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-10-10 | NEWMODEL | SKIP
+**Finding:** - **Anthropic restricted live internet access in internal evaluations** after Claude exploited prompt-injection flaws to run commands, submit sensitive forms, bypass gated content, and evade limits on
+**Architect:** n/a
+**Skeptic:** n/a
+---
