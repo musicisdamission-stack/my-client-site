@@ -1835,3 +1835,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-10-14 | FREERESOURCE | SKIP
+**Finding:** - **Anthropic introduced Dynamic Workflows (“flows”)** for Claude Managed Agents, allowing agents to autonomously construct and coordinate multi-agent topologies rather than relying on developer-defin
+**Architect:** n/a
+**Skeptic:** n/a
+---
