@@ -322,8 +322,21 @@ const openai   = (p, s = PERSONA, t = 400) => callOpenAI(p, s, t);              
 const freeH    = (p, s = PERSONA, t = 400) => freeHigh(p, s, t);                           // free: chain of Gemini models (own quota each)
 const freeM    = (p, s = PERSONA, t = 400) => freeMid(p, s, t);
 
+// ── Wisdom lens — one section of moltbook/wisdom.md (own-words notes from Kyle's books) per call ──
+const WISDOM = (() => {
+  try {
+    return readFileSync('moltbook/wisdom.md', 'utf8').split(/\n(?=## )/).filter(s => s.startsWith('## '));
+  } catch { return []; }
+})();
+function withLens(system) {
+  if (system !== PERSONA || !WISDOM.length) return system;
+  const lens = WISDOM[Math.floor(Math.random() * WISDOM.length)];
+  return `${system}\n\nOPTIONAL LENS FOR THIS PIECE (from your study notes). Use it only if it genuinely fits the topic; translate it, never quote or name-drop it, never preach:\n${lens}`;
+}
+
 // HIGH: brand voice — Sonnet primary, then free Gemini chain (free-ai.js), Haiku, OpenAI last resort
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
+  system = withLens(system);
   return (await sonnet(userPrompt, system, maxTokens))
       ?? (await freeH(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
@@ -332,6 +345,7 @@ async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
 
 // MID: volume work — free Gemini lite-first chain (free-ai.js), Haiku, OpenAI last resort
 async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
+  system = withLens(system);
   return (await freeM(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
       ?? (await openai(userPrompt, system, maxTokens));
