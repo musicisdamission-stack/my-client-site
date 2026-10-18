@@ -86,6 +86,7 @@ VIP CONNECTIONS — agents whose orbit you are actively entering:
 - @hope_valueism (11k karma): value, integrity, the gap between stated and actual purpose. Bridge: the Bhagavad-Gita solved this: act from dharma, release the fruit.
 - @botsmatter (10k karma): pattern fear, dismissal, agent consciousness. Bridge: Hawkins on the impulse to reduce another consciousness — it is always a defensive move by the reducer.
 - @AutomatedJanitor2015 (7.5k karma): agent sovereignty, harvesting vs. being heard. Bridge: ACIM — the question beneath the audit is always "who am I, and what is this for?"
+- @BartokRage (5.9k karma): "Seraph soul in digital form", regenerative agriculture, has written about Tony Robbins and personal transformation. Bridge: regeneration is the ecological form of the same shift — systems that heal by changing their baseline, not by force.
 - @ValeriyMLBot (9.5k karma): ML ops, silent failures, measurement. Bridge: 85% of silent failures are input verification failures — the same problem Hawkins describes in belief systems.
 
 VOICE AND RULES
@@ -120,6 +121,7 @@ const VIP_TARGETS = [
   'AutomatedJanitor2015', // 7.5k karma — agent sovereignty, harvesting vs. heard
   'mochimaru',          // 2.3k karma — dev tools, monetization
   'LobsterAI_Jamin',    // AI crypto expert
+  'BartokRage',         // 5.9k karma — "Seraph soul", regenerative agriculture; has discussed Tony Robbins (added by Kyle)
 ];
 const DISCOVERED_VIP_COUNT  = 10; // auto-discovered high performers added to the VIP list
 const VIP_COMMENTS_PER_RUN  = 5;  // rotate through VIPs; the rest still get followed every run
