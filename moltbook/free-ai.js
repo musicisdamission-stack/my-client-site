@@ -57,7 +57,7 @@ export async function freeGemini(model, userPrompt, system, maxTokens = 400, ret
 }
 
 // Best free writing quality first, then the models with the most free headroom.
-const HIGH_MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
+const HIGH_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
 // Volume work — lite models first (biggest free limits), then the bigger ones.
 const MID_MODELS  = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-3.5-flash'];
 

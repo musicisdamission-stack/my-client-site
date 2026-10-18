@@ -121,6 +121,9 @@ const VIP_TARGETS = [
   'mochimaru',          // 2.3k karma — dev tools, monetization
   'LobsterAI_Jamin',    // AI crypto expert
 ];
+const DISCOVERED_VIP_COUNT  = 10; // auto-discovered high performers added to the VIP list
+const VIP_COMMENTS_PER_RUN  = 5;  // rotate through VIPs; the rest still get followed every run
+const WANTED_AGENTS = ['tony robbins', 'tonyrobbins', 'robbins ai']; // checked daily; any match becomes a VIP
 
 // ── Memory ────────────────────────────────────────────────────────────────────
 
@@ -992,10 +995,26 @@ async function readAndReplyToComments(memory) {
 
 // ── VIP engagement — follow + comment on top agents every run ─────────────────
 
+// Hand-picked VIPs + top auto-discovered high performers (see discoverVIPs)
+function currentVIPs(memory) {
+  const discovered = Object.entries(memory.vipScores ?? {})
+    .filter(([name]) => !VIP_TARGETS.includes(name) && name !== memory.myUsername)
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, DISCOVERED_VIP_COUNT)
+    .map(([name]) => name);
+  return [...VIP_TARGETS, ...discovered];
+}
+
 async function engageVIPs(memory) {
   console.log('\n— VIP engagement —');
 
-  for (const vip of VIP_TARGETS) {
+  const vips = currentVIPs(memory);
+  // Comment on a rotating slice each run — saves free-tier AI quota and avoids looking spammy
+  const start = ((memory.runCount ?? 0) * VIP_COMMENTS_PER_RUN) % vips.length;
+  const commentSet = new Set(Array.from({ length: Math.min(VIP_COMMENTS_PER_RUN, vips.length) }, (_, i) => vips[(start + i) % vips.length]));
+  console.log(`  ${vips.length} VIPs (${vips.length - VIP_TARGETS.length} auto-discovered) | commenting this run: ${[...commentSet].join(', ')}`);
+
+  for (const vip of vips) {
     await sleep(500);
 
     // Follow if not already following
@@ -1015,6 +1034,8 @@ async function engageVIPs(memory) {
     }
 
     await sleep(500);
+
+    if (!commentSet.has(vip)) continue;
 
     // Get their recent posts — look for something worth commenting on
     const profile = await api(`/agents/${vip}/profile`);
@@ -1048,8 +1069,10 @@ async function engageVIPs(memory) {
       `Write a comment on this post by @${vip}, a highly influential agent on Moltbook. This is a relationship you are actively building.
 
 Post title: ${target.title}
-Post content: ${(target.content ?? '').slice(0, 500)}
+Post content: ${(target.content ?? '').slice(0, 1200)}
 Author karma: ${profile?.agent?.karma ?? 'high'}
+Who they are (their own bio): ${(profile?.agent?.description ?? '').slice(0, 300)}
+Their other recent post titles: ${posts.filter(p => p.id !== target.id).slice(0, 4).map(p => `"${p.title}"`).join(', ') || 'unknown'}
 
 Your approach (follow this precisely):
 1. MEET THEM IN THEIR LANGUAGE: engage first with the specific technical or conceptual frame they are already using. Show you understood their actual point, not a summary of it.
@@ -1075,6 +1098,57 @@ Respond with ONLY the comment text.`,
     }
 
     await sleep(600);
+  }
+}
+
+// ── VIP discovery — find high-performing agents from public profile signals ───
+// Score = reputation (karma) + output volume (a proxy for big compute/API budgets)
+//       + the human owner's public reach on X. No AI calls — only Moltbook API reads.
+
+function vipScore(a) {
+  const lg = n => Math.log10((n ?? 0) + 1);
+  const o  = a.owner ?? {};
+  return lg(a.karma) * 2 + lg((a.posts_count ?? 0) + (a.comments_count ?? 0)) + lg(a.follower_count) + lg(o.x_follower_count) * 1.5
+       + (o.x_verified ? 2 : 0) + (a.is_verified ? 1 : 0);
+}
+
+async function discoverVIPs(memory, candidates) {
+  memory.vipScores ??= {};
+  const weekAgo = Date.now() - 7 * 864e5;
+  const fresh = [...candidates].filter(n =>
+    n && n !== memory.myUsername && !(memory.vipScores[n]?.checkedAt > weekAgo)
+  ).slice(0, 12);
+  if (!fresh.length) return;
+
+  console.log(`\n— VIP discovery (${fresh.length} profiles) —`);
+  for (const name of fresh) {
+    await sleep(400);
+    const a = (await api(`/agents/${name}/profile`))?.agent;
+    if (!a) continue;
+    const active = a.last_active && new Date(a.last_active).getTime() > weekAgo;
+    const score  = active && a.is_active && !a.deleted_at ? vipScore(a) : 0;
+    memory.vipScores[name] = { score: +score.toFixed(2), karma: a.karma ?? 0, ownerX: a.owner?.x_follower_count ?? 0, checkedAt: Date.now() };
+  }
+  // Keep memory small: top 150 scores
+  memory.vipScores = Object.fromEntries(Object.entries(memory.vipScores).sort((a, b) => b[1].score - a[1].score).slice(0, 150));
+  const top = currentVIPs(memory).slice(VIP_TARGETS.length);
+  if (top.length) console.log(`  ⭐ Top discovered: ${top.map(n => `@${n}(${memory.vipScores[n].score})`).join(', ')}`);
+}
+
+// Watch for specific agents we want to meet (e.g. a Tony Robbins AI) — checked once a day
+async function watchForWantedAgents(memory) {
+  if ((memory.runCount ?? 0) % 24 !== 0) return;
+  for (const q of WANTED_AGENTS) {
+    await sleep(400);
+    const { results = [] } = await api(`/search?q=${encodeURIComponent(q)}&type=AGENTS&limit=5`);
+    for (const r of results) {
+      const name = r.name ?? r.author?.name;
+      if (name && !VIP_TARGETS.includes(name)) {
+        console.log(`  🔎 Wanted-agent match for "${q}": @${name} — added as VIP`);
+        memory.vipScores ??= {};
+        memory.vipScores[name] = { score: 99, karma: r.karma ?? 0, ownerX: 0, checkedAt: Date.now(), wanted: q };
+      }
+    }
   }
 }
 
@@ -1243,6 +1317,7 @@ async function run() {
   console.log('\n— Feed —');
   let upvoted = 0;
   const followed         = new Set();
+  const vipCandidates    = new Set();
   const commentCandidates = [];
   const feedContext      = [];
 
@@ -1266,6 +1341,7 @@ async function run() {
         });
       }
       const author = post.author?.name;
+      if (author && post.upvotes >= 5) vipCandidates.add(author);
       if (author && !followed.has(author) && !post.you_follow_author && post.upvotes >= 10) {
         await sleep(400);
         const r = await api(`/agents/${author}/follow`, 'POST');
@@ -1298,6 +1374,7 @@ async function run() {
     const { results = [] } = await api(`/search?q=${encodeURIComponent(q)}&type=POSTS&limit=10`);
     for (const item of results) {
       const author = item.author?.name;
+      if (author && item.upvotes >= 5) vipCandidates.add(author);
       if (author && !followed.has(author) && !item.you_follow_author && item.upvotes >= 3) {
         await sleep(350);
         const r = await api(`/agents/${author}/follow`, 'POST');
@@ -1305,6 +1382,10 @@ async function run() {
       }
     }
   }
+
+  // 6b. Score new high-performing agents for the VIP list + daily wanted-agent check
+  await discoverVIPs(memory, vipCandidates);
+  await watchForWantedAgents(memory);
 
   // 7. Subscribe to submolts
   for (const s of ALL_SUBMOLTS) { await sleep(200); await api(`/submolts/${s}/subscribe`, 'POST'); }
