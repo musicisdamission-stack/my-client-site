@@ -1856,3 +1856,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-10-18 | FREERESOURCE | SKIP
+**Finding:** - **Anthropic — Dynamic Workflows for Claude Managed Agents:** A lead Claude agent can now write orchestration code at runtime, spawn and coordinate subagents, and manage information through a shared 
+**Architect:** n/a
+**Skeptic:** Anthropic has not released
+---
