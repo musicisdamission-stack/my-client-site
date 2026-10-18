@@ -1,11 +1,10 @@
 // Free AI fallbacks — no paid credits needed.
 //  1. Gemini free tier (GEMINI_API_KEY from an AI Studio project with billing OFF)
-//  2. GitHub Models (uses the workflow's own GITHUB_TOKEN; needs `permissions: models: read`)
-// Both have small per-minute / per-day caps, so: wait + retry once on per-minute limits,
-// and stop asking a model for the rest of the run once its daily cap is hit.
+// Each Gemini model has its OWN free-tier quota, so chaining several models multiplies free headroom.
+// Per-minute cap or "high demand" → wait + retry once. Daily cap → skip that model for the rest of the run.
+// (GitHub Models was tried as a fallback on 2026-10-18 but its endpoints only answer "OK" — removed.)
 
 const GEMINI_KEY   = process.env.GEMINI_API_KEY;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 const exhausted = new Set();
 export const freeStats = { ok: 0, fail: 0 };
@@ -24,7 +23,7 @@ export async function freeGemini(model, userPrompt, system, maxTokens = 400, ret
         body: JSON.stringify({
           ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
           contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: { maxOutputTokens: maxTokens },
+          generationConfig: { maxOutputTokens: maxTokens + 2048 }, // headroom: thinking tokens count against this
         }),
       }
     );
@@ -42,6 +41,11 @@ export async function freeGemini(model, userPrompt, system, maxTokens = 400, ret
           return freeGemini(model, userPrompt, system, maxTokens, false);
         }
       }
+      if (retry && (data.error.code === 503 || data.error.status === 'UNAVAILABLE')) {
+        console.log(`  ⏳ Gemini(${model}) busy — waiting 8s then retrying`);
+        await sleep(8000);
+        return freeGemini(model, userPrompt, system, maxTokens, false);
+      }
       console.error(`Gemini(${model}) error:`, msg.slice(0, 200));
       freeStats.fail++;
       return null;
@@ -52,55 +56,18 @@ export async function freeGemini(model, userPrompt, system, maxTokens = 400, ret
   } catch (err) { console.error(`Gemini(${model}) fetch error:`, err.message); freeStats.fail++; return null; }
 }
 
-export async function githubModel(model, userPrompt, system, maxTokens = 400, retry = true) {
-  if (!GITHUB_TOKEN || exhausted.has(`gh:${model}`)) return null;
-  try {
-    const res = await fetch('https://models.github.ai/inference/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        model, max_tokens: maxTokens,
-        messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: userPrompt }],
-      }),
-    });
-    const body = await res.text();
-    if (res.status === 429) {
-      const wait = parseInt(res.headers.get('retry-after') ?? '60', 10);
-      if (wait > 120 || isDaily(body)) {
-        exhausted.add(`gh:${model}`);
-        console.error(`  ⚠ GitHub Models(${model}) daily free quota used up — skipping it this run`);
-      } else if (retry) {
-        console.log(`  ⏳ GitHub Models(${model}) rate limit — waiting ${wait + 2}s then retrying`);
-        await sleep((wait + 2) * 1000);
-        return githubModel(model, userPrompt, system, maxTokens, false);
-      }
-      freeStats.fail++;
-      return null;
-    }
-    let data;
-    try { data = JSON.parse(body); } catch { data = null; }
-    const text = data?.choices?.[0]?.message?.content?.trim();
-    if (!res.ok || !text) {
-      console.error(`GitHub Models(${model}) error: HTTP ${res.status} ${body.slice(0, 200)}`);
-      freeStats.fail++;
-      return null;
-    }
-    freeStats.ok++;
-    return text;
-  } catch (err) { console.error(`GitHub Models(${model}) fetch error:`, err.message); freeStats.fail++; return null; }
-}
-
 // Best free writing quality first, then the models with the most free headroom.
-export async function freeHigh(userPrompt, system, maxTokens = 400) {
-  return (await freeGemini('gemini-3.5-flash', userPrompt, system, maxTokens))
-      ?? (await githubModel('openai/gpt-4.1', userPrompt, system, maxTokens))
-      ?? (await freeGemini('gemini-3.1-flash-lite', userPrompt, system, maxTokens))
-      ?? (await githubModel('openai/gpt-4.1-mini', userPrompt, system, maxTokens));
+const HIGH_MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
+// Volume work — lite models first (biggest free limits), then the bigger ones.
+const MID_MODELS  = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-3.5-flash'];
+
+async function chain(models, userPrompt, system, maxTokens) {
+  for (const m of models) {
+    const text = await freeGemini(m, userPrompt, system, maxTokens);
+    if (text) return text;
+  }
+  return null;
 }
 
-// Volume work — biggest free limits first.
-export async function freeMid(userPrompt, system, maxTokens = 400) {
-  return (await freeGemini('gemini-3.1-flash-lite', userPrompt, system, maxTokens))
-      ?? (await githubModel('openai/gpt-4.1-mini', userPrompt, system, maxTokens))
-      ?? (await freeGemini('gemini-3.5-flash', userPrompt, system, maxTokens));
-}
+export const freeHigh = (p, s, t = 400) => chain(HIGH_MODELS, p, s, t);
+export const freeMid  = (p, s, t = 400) => chain(MID_MODELS, p, s, t);

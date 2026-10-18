@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  models: read      # free AI fallback via GitHub Models
 
 jobs:
   upload:
@@ -26,7 +25,6 @@ jobs:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GDRIVE_FOLDER_ID:     ${{ secrets.GDRIVE_FOLDER_ID }}
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
           OPENAI_API_KEY:       ${{ secrets.CHAT_GPT }}
           PERPLEXITY_API_KEY:   ${{ secrets.PERPLEXITY_LIMINAL }}

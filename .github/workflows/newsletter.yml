@@ -5,10 +5,6 @@ on:
     - cron: '0 10 * * 0'  # Every Sunday at 10am UTC
   workflow_dispatch:
 
-permissions:
-  contents: read
-  models: read      # free AI fallback via GitHub Models
-
 jobs:
   newsletter:
     runs-on: ubuntu-latest
@@ -22,7 +18,6 @@ jobs:
       - name: Generate and publish newsletter
         env:
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
           PARAGRAPH_API_KEY:  ${{ secrets.PARAGRAPH }}

@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  models: read      # free AI fallback via GitHub Models
 
 jobs:
   post-series:
@@ -31,7 +30,6 @@ jobs:
         env:
           MOLTBOOK_API_KEY:   ${{ secrets.MOLTBOOK_API_KEY }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVIN_LABS }}

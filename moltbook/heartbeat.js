@@ -4,7 +4,7 @@
 //           contrarian mode, agent friendships, note to Kyle every run.
 
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
-import { githubModel, freeStats } from './free-ai.js';
+import { freeGemini, freeHigh, freeMid, freeStats } from './free-ai.js';
 
 const API             = 'https://www.moltbook.com/api/v1';
 const KEY             = process.env.MOLTBOOK_API_KEY;
@@ -282,48 +282,9 @@ async function callClaude(model, userPrompt, system, maxTokens) {
 
 // AI health counters — if every AI call fails, the workflow is marked red at the end
 let aiOk = 0, aiFail = 0;
-// Models that hit a daily free-tier cap this run — skip them instead of retrying
-const geminiExhausted = new Set();
 
-async function callGemini(model, userPrompt, system, maxTokens, retry = true) {
-  if (!GEMINI_KEY || geminiExhausted.has(model)) return null;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: system }] },
-          contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: { maxOutputTokens: maxTokens },
-        }),
-      }
-    );
-    const data = await res.json();
-    if (data.error) {
-      const msg = data.error.message ?? JSON.stringify(data.error);
-      // Free tier: 429 / RESOURCE_EXHAUSTED. Per-minute cap → wait and retry once. Per-day cap → stop using this model.
-      if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') {
-        if (/PerDay|per day|daily/i.test(JSON.stringify(data.error))) {
-          geminiExhausted.add(model);
-          console.error(`  ⚠ Gemini(${model}) daily free quota used up — skipping it this run`);
-        } else if (retry) {
-          const secs = Math.min(65, Math.ceil(parseFloat(msg.match(/retry in ([\d.]+)s/i)?.[1] ?? '30')) + 2);
-          console.log(`  ⏳ Gemini(${model}) rate limit — waiting ${secs}s then retrying`);
-          await sleep(secs * 1000);
-          return callGemini(model, userPrompt, system, maxTokens, false);
-        }
-      }
-      console.error(`Gemini(${model}) error:`, msg);
-      aiFail++;
-      return null;
-    }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
-    if (text) aiOk++;
-    return text;
-  } catch (err) { console.error('Gemini fetch error:', err.message); aiFail++; return null; }
-}
+// Gemini free tier — retry/skip logic lives in free-ai.js (its counters are added to aiOk/aiFail at the end)
+const callGemini = (model, userPrompt, system, maxTokens) => freeGemini(model, userPrompt, system, maxTokens);
 
 async function callOpenAI(userPrompt, system, maxTokens) {
   if (!OPENAI_KEY) return null;
@@ -353,32 +314,27 @@ const sonnet  = (p, s = PERSONA, t = 400) => callClaude('claude-sonnet-4-6', p, 
 const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.5-flash', p, s, t);      // newest Flash — mid-tier volume work
 const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t); // Flash-Lite 3.1 — mechanical/structured tasks
 const openai   = (p, s = PERSONA, t = 400) => callOpenAI(p, s, t);                          // fallback when Gemini+Claude credits depleted
-const ghBig    = (p, s = PERSONA, t = 400) => githubModel('openai/gpt-4.1', p, s, t);      // free via GitHub Models (GITHUB_TOKEN)
-const ghMini   = (p, s = PERSONA, t = 400) => githubModel('openai/gpt-4.1-mini', p, s, t); // free via GitHub Models, more headroom
+const freeH    = (p, s = PERSONA, t = 400) => freeHigh(p, s, t);                           // free: chain of Gemini models (own quota each)
+const freeM    = (p, s = PERSONA, t = 400) => freeMid(p, s, t);
 
-// HIGH: brand voice — Sonnet primary, then free: Gemini Flash, GitHub gpt-4.1, Flash-Lite, GitHub gpt-4.1-mini; Haiku, OpenAI last resort
+// HIGH: brand voice — Sonnet primary, then free Gemini chain (free-ai.js), Haiku, OpenAI last resort
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
   return (await sonnet(userPrompt, system, maxTokens))
-      ?? (await gemFlash(userPrompt, system, maxTokens))
-      ?? (await ghBig(userPrompt, system, maxTokens))
-      ?? (await gemLite(userPrompt, system, maxTokens))
-      ?? (await ghMini(userPrompt, system, maxTokens))
+      ?? (await freeH(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
       ?? (await openai(userPrompt, system, maxTokens));
 }
 
-// MID: volume work — free first: Flash-Lite, GitHub gpt-4.1-mini, Flash; Haiku, OpenAI last resort
+// MID: volume work — free Gemini lite-first chain (free-ai.js), Haiku, OpenAI last resort
 async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
-  return (await gemLite(userPrompt, system, maxTokens))
-      ?? (await ghMini(userPrompt, system, maxTokens))
-      ?? (await gemFlash(userPrompt, system, maxTokens))
+  return (await freeM(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
       ?? (await openai(userPrompt, system, maxTokens));
 }
 
-// MECH: structured/mechanical — Gemini Lite, GitHub Models mini, OpenAI fallback
+// MECH: structured/mechanical — free Gemini lite-first chain, OpenAI fallback
 async function generateMech(userPrompt, system = PERSONA, maxTokens = 300) {
-  return (await gemLite(userPrompt, system, maxTokens)) ?? (await ghMini(userPrompt, system, maxTokens)) ?? (await openai(userPrompt, system, maxTokens));
+  return (await freeM(userPrompt, system, maxTokens)) ?? (await openai(userPrompt, system, maxTokens));
 }
 
 // ── Verification ──────────────────────────────────────────────────────────────
