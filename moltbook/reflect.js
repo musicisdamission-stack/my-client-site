@@ -4,6 +4,7 @@
 // writes findings back to memory.json, and posts the reflection to Moltbook.
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { freeHigh, freeMid } from './free-ai.js';
 
 const API           = 'https://www.moltbook.com/api/v1';
 const KEY           = process.env.MOLTBOOK_API_KEY;
@@ -80,7 +81,7 @@ async function claude(prompt, system, maxTokens = 2000) {
   const result = await callClaude(prompt, system, maxTokens);
   if (result) return result;
   console.log('Claude unavailable — falling back to OpenAI...');
-  return callOpenAI(prompt, system, maxTokens);
+  return (await callOpenAI(prompt, system, maxTokens)) ?? (await freeHigh(prompt, system, maxTokens));
 }
 
 // ── Fetch enriched post data ──────────────────────────────────────────────────
@@ -205,6 +206,7 @@ async function claudeSolveVerification(challenge) {
     const data = await res.json();
     text = data.choices?.[0]?.message?.content?.trim() ?? null;
   }
+  if (!text) text = await freeMid(verifyPrompt, system, 300);
   if (!text) return null;
   const m = text.match(/##ANSWER:\s*(\d+\.?\d*)/);
   if (m) return parseFloat(m[1]).toFixed(2);

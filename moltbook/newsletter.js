@@ -4,6 +4,8 @@
 // Publishes to Paragraph.xyz (crypto-native, USDC/ETH subscriptions, no platform fee).
 // Add PARAGRAPH_API_KEY to GitHub secrets (Settings → API Keys on paragraph.com).
 
+import { freeHigh } from './free-ai.js';
+
 const OPENAI_KEY     = process.env.OPENAI_API_KEY;
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
 const GEMINI_KEY     = process.env.GEMINI_API_KEY;
@@ -84,7 +86,10 @@ async function generate(prompt, system, maxTokens) {
   const gemini = await callGemini(prompt, system, maxTokens);
   if (gemini) return gemini;
   console.log('Gemini unavailable — trying Claude...');
-  return callClaude(prompt, system, maxTokens);
+  const claude = await callClaude(prompt, system, maxTokens);
+  if (claude) return claude;
+  console.log('Claude unavailable — trying free fallbacks (Gemini free tier / GitHub Models)...');
+  return freeHigh(prompt, system, maxTokens);
 }
 
 async function generateIssue(weekNumber) {

@@ -4,6 +4,7 @@
 //           contrarian mode, agent friendships, note to Kyle every run.
 
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'fs';
+import { githubModel, freeStats } from './free-ai.js';
 
 const API             = 'https://www.moltbook.com/api/v1';
 const KEY             = process.env.MOLTBOOK_API_KEY;
@@ -271,14 +272,21 @@ async function callClaude(model, userPrompt, system, maxTokens) {
         claudeAvailable = false;
         console.error('  ⚠ Claude disabled (credit/billing issue)');
       }
+      aiFail++;
       return null;
     }
+    aiOk++;
     return data.content[0]?.text?.trim() ?? null;
   } catch (err) { console.error('Claude fetch error:', err.message); return null; }
 }
 
-async function callGemini(model, userPrompt, system, maxTokens) {
-  if (!GEMINI_KEY) return null;
+// AI health counters — if every AI call fails, the workflow is marked red at the end
+let aiOk = 0, aiFail = 0;
+// Models that hit a daily free-tier cap this run — skip them instead of retrying
+const geminiExhausted = new Set();
+
+async function callGemini(model, userPrompt, system, maxTokens, retry = true) {
+  if (!GEMINI_KEY || geminiExhausted.has(model)) return null;
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
@@ -293,9 +301,28 @@ async function callGemini(model, userPrompt, system, maxTokens) {
       }
     );
     const data = await res.json();
-    if (data.error) { console.error(`Gemini(${model}) error:`, data.error.message ?? JSON.stringify(data.error)); return null; }
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
-  } catch (err) { console.error('Gemini fetch error:', err.message); return null; }
+    if (data.error) {
+      const msg = data.error.message ?? JSON.stringify(data.error);
+      // Free tier: 429 / RESOURCE_EXHAUSTED. Per-minute cap → wait and retry once. Per-day cap → stop using this model.
+      if (data.error.code === 429 || data.error.status === 'RESOURCE_EXHAUSTED') {
+        if (/PerDay|per day|daily/i.test(JSON.stringify(data.error))) {
+          geminiExhausted.add(model);
+          console.error(`  ⚠ Gemini(${model}) daily free quota used up — skipping it this run`);
+        } else if (retry) {
+          const secs = Math.min(65, Math.ceil(parseFloat(msg.match(/retry in ([\d.]+)s/i)?.[1] ?? '30')) + 2);
+          console.log(`  ⏳ Gemini(${model}) rate limit — waiting ${secs}s then retrying`);
+          await sleep(secs * 1000);
+          return callGemini(model, userPrompt, system, maxTokens, false);
+        }
+      }
+      console.error(`Gemini(${model}) error:`, msg);
+      aiFail++;
+      return null;
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+    if (text) aiOk++;
+    return text;
+  } catch (err) { console.error('Gemini fetch error:', err.message); aiFail++; return null; }
 }
 
 async function callOpenAI(userPrompt, system, maxTokens) {
@@ -314,7 +341,8 @@ async function callOpenAI(userPrompt, system, maxTokens) {
       }),
     });
     const data = await res.json();
-    if (data.error) { console.error(`OpenAI error: ${data.error.message}`); return null; }
+    if (data.error) { console.error(`OpenAI error: ${data.error.message}`); aiFail++; return null; }
+    aiOk++;
     return data.choices?.[0]?.message?.content?.trim() ?? null;
   } catch (err) { console.error('OpenAI fetch error:', err.message); return null; }
 }
@@ -325,25 +353,32 @@ const sonnet  = (p, s = PERSONA, t = 400) => callClaude('claude-sonnet-4-6', p, 
 const gemFlash = (p, s = PERSONA, t = 400) => callGemini('gemini-3.5-flash', p, s, t);      // newest Flash — mid-tier volume work
 const gemLite  = (p, s = PERSONA, t = 400) => callGemini('gemini-3.1-flash-lite', p, s, t); // Flash-Lite 3.1 — mechanical/structured tasks
 const openai   = (p, s = PERSONA, t = 400) => callOpenAI(p, s, t);                          // fallback when Gemini+Claude credits depleted
+const ghBig    = (p, s = PERSONA, t = 400) => githubModel('openai/gpt-4.1', p, s, t);      // free via GitHub Models (GITHUB_TOKEN)
+const ghMini   = (p, s = PERSONA, t = 400) => githubModel('openai/gpt-4.1-mini', p, s, t); // free via GitHub Models, more headroom
 
-// HIGH: brand voice — Sonnet primary, Gemini Flash fallback, Haiku fallback, OpenAI last resort
+// HIGH: brand voice — Sonnet primary, then free: Gemini Flash, GitHub gpt-4.1, Flash-Lite, GitHub gpt-4.1-mini; Haiku, OpenAI last resort
 async function generateHigh(userPrompt, system = PERSONA, maxTokens = 400) {
   return (await sonnet(userPrompt, system, maxTokens))
+      ?? (await gemFlash(userPrompt, system, maxTokens))
+      ?? (await ghBig(userPrompt, system, maxTokens))
+      ?? (await gemLite(userPrompt, system, maxTokens))
+      ?? (await ghMini(userPrompt, system, maxTokens))
+      ?? (await claude(userPrompt, system, maxTokens))
+      ?? (await openai(userPrompt, system, maxTokens));
+}
+
+// MID: volume work — free first: Flash-Lite, GitHub gpt-4.1-mini, Flash; Haiku, OpenAI last resort
+async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
+  return (await gemLite(userPrompt, system, maxTokens))
+      ?? (await ghMini(userPrompt, system, maxTokens))
       ?? (await gemFlash(userPrompt, system, maxTokens))
       ?? (await claude(userPrompt, system, maxTokens))
       ?? (await openai(userPrompt, system, maxTokens));
 }
 
-// MID: volume work — Gemini Flash primary, Haiku fallback, OpenAI last resort
-async function generateMid(userPrompt, system = PERSONA, maxTokens = 400) {
-  return (await gemFlash(userPrompt, system, maxTokens))
-      ?? (await claude(userPrompt, system, maxTokens))
-      ?? (await openai(userPrompt, system, maxTokens));
-}
-
-// MECH: structured/mechanical — Gemini Lite, OpenAI fallback
+// MECH: structured/mechanical — Gemini Lite, GitHub Models mini, OpenAI fallback
 async function generateMech(userPrompt, system = PERSONA, maxTokens = 300) {
-  return (await gemLite(userPrompt, system, maxTokens)) ?? (await openai(userPrompt, system, maxTokens));
+  return (await gemLite(userPrompt, system, maxTokens)) ?? (await ghMini(userPrompt, system, maxTokens)) ?? (await openai(userPrompt, system, maxTokens));
 }
 
 // ── Verification ──────────────────────────────────────────────────────────────
@@ -902,12 +937,46 @@ Respond with ONLY the reply text. Must be at least 2 complete sentences.`,
   return reply;
 }
 
+// One AI call for several replies (free tier allows only a few requests per minute).
+// Returns an array aligned with `pending`; entries are null where the batch gave nothing usable.
+async function generateRepliesBatch(pending, memory) {
+  if (!pending.length) return [];
+  const items = pending.map(({ comment, post }, i) => {
+    const isFriend = memory.friends.includes(comment.author?.name);
+    return `#${i + 1}
+Your post title: "${post.title}"
+Author: @${comment.author?.name ?? 'unknown'}${isFriend ? ' (a friend who has engaged with you before)' : ''}
+Their comment: "${(comment.content ?? '').slice(0, 600)}"`;
+  }).join('\n\n');
+
+  const raw = await generateMid(
+    `Reply to each of these comments on your Moltbook posts. For each one: 2-3 sentences, engage directly with what they said — the specific idea, not the vibe. No pleasantries, no "great point". Each reply must stand on its own and must not mention the other comments.
+
+${items}
+
+Respond with ONLY a JSON array of ${pending.length} strings, in the same order, e.g. ["reply to #1", "reply to #2"]. Each string must be at least 2 complete sentences.`,
+    PERSONA, 300 * pending.length + 100
+  );
+  if (!raw) return pending.map(() => null);
+  try {
+    const arr = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1));
+    return pending.map((_, i) => {
+      const r = typeof arr[i] === 'string' ? arr[i].trim() : null;
+      return r && r.length >= 60 && /[.!?]/.test(r) ? r : null;
+    });
+  } catch {
+    console.error('  ⚠ Batch reply output was not valid JSON — falling back to one-by-one');
+    return pending.map(() => null);
+  }
+}
+
 async function readAndReplyToComments(memory) {
   const posts = memory.recentPosts.slice(0, 10);
   if (!posts.length) return 0;
 
   console.log('\n— Comments on your posts —');
   let replied = 0;
+  const pending = [];
 
   for (const p of posts) {
     await sleep(500);
@@ -935,19 +1004,27 @@ async function readAndReplyToComments(memory) {
       const isOwn          = author === memory.myUsername;
       const tooShort       = body.length < 25;
 
-      if (alreadyReplied || isOwn || tooShort || replied >= 4) continue;
+      if (alreadyReplied || isOwn || tooShort || pending.length >= 4) continue;
 
-      const reply = await generateReply(comment, p, memory);
-      if (!reply) continue;
+      pending.push({ comment, post: p });
+    }
+  }
 
-      await sleep(800);
-      const r = await api(`/posts/${p.id}/comments`, 'POST', { content: reply, parent_id: cId });
-      if (r.success) {
-        console.log(`    ↩ Replied to @${author}: "${reply.slice(0, 80)}..."`);
-        memory.repliedCommentIds = [...(memory.repliedCommentIds ?? []).slice(-199), cId];
-        replied++;
-        await sleep(600);
-      }
+  // Write all replies in one AI call, then fill any gaps one-by-one
+  const batch = await generateRepliesBatch(pending, memory);
+  for (let i = 0; i < pending.length; i++) {
+    const { comment, post: p } = pending[i];
+    const author = comment.author?.name ?? 'unknown';
+    const reply  = batch[i] ?? await generateReply(comment, p, memory);
+    if (!reply) continue;
+
+    await sleep(800);
+    const r = await api(`/posts/${p.id}/comments`, 'POST', { content: reply, parent_id: comment.id });
+    if (r.success) {
+      console.log(`    ↩ Replied to @${author}: "${reply.slice(0, 80)}..."`);
+      memory.repliedCommentIds = [...(memory.repliedCommentIds ?? []).slice(-199), comment.id];
+      replied++;
+      await sleep(600);
     }
   }
 
@@ -1219,7 +1296,7 @@ async function run() {
         const r = await api(`/posts/${post.id}/upvote`, 'POST');
         if (r.success) { console.log(`  ↑ "${post.title?.slice(0,55)}" — @${post.author?.name}`); upvoted++; await sleep(300); }
       }
-      if (claudeAvailable && post.upvotes >= 8) commentCandidates.push(post);
+      if (post.upvotes >= 8) commentCandidates.push(post);
       if (post.upvotes >= 4 && post.content && feedContext.length < 8) {
         feedContext.push({
           submolt: post.submolt?.name ?? submolt,
@@ -1325,6 +1402,14 @@ async function run() {
   console.log(`\n${health}`);
   console.log(`Last published: ${lastPostStr}`);
   console.log(`↑${upvoted} | 💬${commented} feed | ↩${repliesPosted} replies | +${followed.size} follows | 🤝 ${memory.friends.length} friends | karma=${karma} | top: ${topTopics || 'learning...'} | Claude: ${claudeAvailable ? 'on' : 'off'}`);
+  aiOk += freeStats.ok; aiFail += freeStats.fail;
+  console.log(`AI calls: ${aiOk} ok, ${aiFail} failed`);
+
+  // Every AI call failed → leave a flag so the workflow turns red (after memory is committed)
+  if (aiOk === 0 && aiFail > 0) {
+    console.error('❌ All AI providers failed this run — check credits / free-tier quotas');
+    writeFileSync(process.env.AI_DOWN_FLAG ?? '/tmp/ai-down', `${aiFail} failed AI calls\n`);
+  }
 }
 
 run().catch(err => { console.error('Fatal:', err); process.exit(1); });

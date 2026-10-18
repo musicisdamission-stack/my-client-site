@@ -4,6 +4,7 @@
 // Scheduled: Wednesdays 4pm UTC. Manual: set SERIES to a series name or "auto".
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { freeHigh, freeMid } from './free-ai.js';
 
 const API            = 'https://www.moltbook.com/api/v1';
 const KEY            = process.env.MOLTBOOK_API_KEY;
@@ -94,8 +95,9 @@ async function callPerplexity(query, maxTokens = 1200) {
   } catch (err) { console.error('Perplexity fetch error:', err.message); return null; }
 }
 
-const sonnet = (p, s, t = 400) => callClaude('claude-sonnet-4-6', p, s, t);
-const haiku  = (p, s, t = 300) => callClaude('claude-haiku-4-5-20251001', p, s, t);
+// Paid Claude first, then free Gemini / GitHub Models fallbacks (see free-ai.js)
+const sonnet = async (p, s, t = 400) => (await callClaude('claude-sonnet-4-6', p, s, t)) ?? (await freeHigh(p, s, t));
+const haiku  = async (p, s, t = 300) => (await callClaude('claude-haiku-4-5-20251001', p, s, t)) ?? (await freeMid(p, s, t));
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
@@ -292,7 +294,7 @@ Return ONLY valid JSON, no markdown fences, no explanation:
 
   const raw = await sonnet(generationPrompt, systemPrompt, 4000);
   if (!raw) {
-    console.log('  ✗ Sonnet unavailable for series generation');
+    console.log('  ✗ No AI available for series generation (paid and free all failed)');
     return null;
   }
 

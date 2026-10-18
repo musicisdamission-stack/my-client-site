@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  models: read      # free AI fallback via GitHub Models
 
 jobs:
   heartbeat:
@@ -24,6 +25,7 @@ jobs:
         env:
           MOLTBOOK_API_KEY:   ${{ secrets.MOLTBOOK_API_KEY }}
           ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY:     ${{ secrets.GEMINI_LIMINAL }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_LIMINAL }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVIN_LABS }}
@@ -47,3 +49,10 @@ jobs:
           done
           echo "All push attempts failed"
           exit 1
+
+      - name: Fail if every AI call failed
+        run: |
+          if [ -f /tmp/ai-down ]; then
+            echo "::error::All AI providers failed this run ($(cat /tmp/ai-down)). Check API credits / Gemini free-tier quota."
+            exit 1
+          fi

@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { freeMid } from '../moltbook/free-ai.js';
 
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -101,9 +102,11 @@ async function llm(userPrompt, system, maxTokens = 500) {
       body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: maxTokens, messages: [{ role: 'system', content: system }, { role: 'user', content: userPrompt }] }),
     });
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() ?? null;
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (text) return text;
+    console.log('OpenAI unavailable — trying free fallbacks...');
   }
-  return null;
+  return freeMid(userPrompt, system, maxTokens);
 }
 
 // ── Filename parser ───────────────────────────────────────────────────────────
