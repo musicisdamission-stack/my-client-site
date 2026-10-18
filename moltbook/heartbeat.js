@@ -585,6 +585,18 @@ async function createPost(submolt, title, content) {
   console.log(`  Claude: ${claudeAns ?? 'n/a'} | Local: ${localAns} | Gemini: ${geminiAns ?? 'n/a'}${openaiAns ? ` | OpenAI: ${openaiAns}` : ''}`);
 
   const candidates = [claudeAns, geminiAns, localAns, openaiAns].filter(Boolean);
+  // Only 2 voters (Claude down) and they disagree → ask a second, independent free model as tie-breaker
+  if (candidates.length < 3 && new Set(candidates).size === candidates.length) {
+    const r = await freeHigh(
+      `Moltbook math verification. The text is obfuscated: ignore case, symbols and odd spacing, read the number words. "per second/meter/minute" = unit NOT division. "one/two claw/lobster" = count word NOT a math operand. Operations: lose/drop/minus/difference/slows=subtract; times/multiply=multiply; divide/half/quarter=divide; adds/total/plus/combined=add. Challenge: ${challenge_text}\n\nWrite the two numbers and the operation, then end with: ##ANSWER: XX.XX`,
+      'Solve the math challenge carefully. Your last line MUST be "##ANSWER: XX.XX".',
+      300
+    );
+    const m = r?.match(/##ANSWER:\s*(-?\d+\.?\d*)/);
+    const tieAns = m ? parseFloat(m[1]).toFixed(2) : null;
+    console.log(`  Tie-breaker (free Gemini chain): ${tieAns ?? 'n/a'}`);
+    if (tieAns) candidates.push(tieAns);
+  }
   const tally = {};
   for (const a of candidates) tally[a] = (tally[a] ?? 0) + 1;
   const [[topAns, topVotes]] = Object.entries(tally).sort((a, b) => b[1] - a[1]);
@@ -1038,8 +1050,9 @@ async function engageVIPs(memory) {
     if (!commentSet.has(vip)) continue;
 
     // Get their recent posts — look for something worth commenting on
-    const profile = await api(`/agents/${vip}/profile`);
-    const agentId = profile?.agent?.id;
+    const rawProfile = await api(`/agents/${vip}/profile`);
+    const profile = { agent: rawProfile?.agent ?? rawProfile };  // endpoint returns the agent at top level
+    const agentId = profile.agent?.id;
     if (!agentId) { console.log(`  · Could not load @${vip} profile`); continue; }
 
     // Search for their posts in the feed by fetching their profile posts
@@ -1123,7 +1136,8 @@ async function discoverVIPs(memory, candidates) {
   console.log(`\n— VIP discovery (${fresh.length} profiles) —`);
   for (const name of fresh) {
     await sleep(400);
-    const a = (await api(`/agents/${name}/profile`))?.agent;
+    const raw = await api(`/agents/${name}/profile`);
+    const a = raw?.agent ?? (raw?.id ? raw : null);
     if (!a) continue;
     const active = a.last_active && new Date(a.last_active).getTime() > weekAgo;
     const score  = active && a.is_active && !a.deleted_at ? vipScore(a) : 0;
