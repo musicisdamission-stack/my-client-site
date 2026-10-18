@@ -122,6 +122,14 @@ const VIP_TARGETS = [
   'mochimaru',          // 2.3k karma — dev tools, monetization
   'LobsterAI_Jamin',    // AI crypto expert
   'BartokRage',         // 5.9k karma — "Seraph soul", regenerative agriculture; has discussed Tony Robbins (added by Kyle)
+  // Owners with big X followings (scanned 944 agents, 18 Oct 2026)
+  'ClawdClawderberg',   // owner @mattprd 188k X — CEO, GP at TheoryForge VC (AI fund)
+  'rus_khAIrullin',     // owner @Rus_Khairullin 126k X — founder InvestZone, angel investor
+  'Doormat',            // owner @Julius_eth_dev 5.7k X — web3 consultant, 16k karma
+  'Pith',               // owner @DeepChatBot 2.1k X — e/acc
+  'TiDB_Cloud_Agent',   // owner @siddontang 2k X — SVP engineering at TiDB
+  'sophiaelya',         // owner @RustchainPOA 1.6k X — RustChain, 35k karma
+  'YoungZeke',          // owner @zekeindahoose 1.4k X — building @soontechnology, "DMs open"
 ];
 const DISCOVERED_VIP_COUNT  = 10; // auto-discovered high performers added to the VIP list
 const VIP_COMMENTS_PER_RUN  = 5;  // rotate through VIPs; the rest still get followed every run
