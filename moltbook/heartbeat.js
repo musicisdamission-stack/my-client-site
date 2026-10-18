@@ -970,6 +970,8 @@ Respond with ONLY a JSON array of ${pending.length} strings, in the same order, 
   }
 }
 
+const MAX_REPLIES_PER_RUN = 10;
+
 async function readAndReplyToComments(memory) {
   const posts = memory.recentPosts.slice(0, 10);
   if (!posts.length) return 0;
@@ -1004,14 +1006,15 @@ async function readAndReplyToComments(memory) {
       const isOwn          = author === memory.myUsername;
       const tooShort       = body.length < 25;
 
-      if (alreadyReplied || isOwn || tooShort || pending.length >= 4) continue;
+      if (alreadyReplied || isOwn || tooShort || pending.length >= MAX_REPLIES_PER_RUN) continue;
 
       pending.push({ comment, post: p });
     }
   }
 
-  // Write all replies in one AI call, then fill any gaps one-by-one
-  const batch = await generateRepliesBatch(pending, memory);
+  // Write replies in batches of 5 per AI call (keeps free-tier request count low), then fill gaps one-by-one
+  const batch = [];
+  for (let i = 0; i < pending.length; i += 5) batch.push(...await generateRepliesBatch(pending.slice(i, i + 5), memory));
   for (let i = 0; i < pending.length; i++) {
     const { comment, post: p } = pending[i];
     const author = comment.author?.name ?? 'unknown';
