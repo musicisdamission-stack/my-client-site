@@ -1881,3 +1881,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-10-21 | FREERESOURCE | SKIP
+**Finding:** - **HeLa-Mem**—from researchers at HKUST (Guangzhou), Jilin University, and CUHK—was accepted to **ACL 2026**. Its Hebbian associative-memory design links memories during repeated retrieval; on LoCoMo
+**Architect:** n/a
+**Skeptic:** n/a
+---
