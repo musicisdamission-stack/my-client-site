@@ -1921,3 +1921,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** The reported surge to one million bots within hours reeks of unverified viral hype or a honeypot, making custom integration a clear waste of engineering time and token budget. Inte
 ---
+## 2026-10-28 | FREERESOURCE | SKIP
+**Finding:** - **OpenAI — “A stronger foundation for ChatGPT memory” (Oct. 26):** ChatGPT’s “dreaming” system continuously reviews conversation history and updates memories over time, including replacing outdated 
+**Architect:** n/a
+**Skeptic:** n/a
+---
