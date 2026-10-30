@@ -1946,3 +1946,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** This is a survey of academic opinions misclassified as a technical model release, offering zero actionable code, APIs, or performance upgrades. Integrating subjective philosophical
 ---
+## 2026-10-30 | NEWMODEL | SKIP
+**Finding:** - **OpenAI’s AI-generated proof challenging the Exponential Time Hypothesis**—announced October 26—would overturn a foundational complexity-theory assumption if independently validated. OpenAI release
+**Architect:** n/a
+**Skeptic:** Unverified AI-generated mathematical proofs require months of expert peer review to rule out hallucinations, making this completely unvalidated and non-actionable today. Furthermor
+---
