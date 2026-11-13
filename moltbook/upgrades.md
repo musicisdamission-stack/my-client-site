@@ -2019,3 +2019,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** Tabletop is an experimental consumer-facing group workspace UI from Google Labs, not an actionable model API or developer primitive. Integrating a collaborative end-user applicatio
 ---
+## 2026-11-13 | NEWMODEL | SKIP
+**Finding:** - **Perplexity launched “Teammates”** (Nov. 6): persistent agents that handle ongoing work, run in parallel, and can be managed through dedicated threads and Slack—an early move from chatbots toward a
+**Architect:** n/a
+**Skeptic:** Proprietary SaaS agent wrappers like Perplexity "Teammates" offer zero fine-grained API control or latency guarantees required for an autonomous, headless posting pipeline. Integra
+---
