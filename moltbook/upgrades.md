@@ -2034,3 +2034,9 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** This is an unverified rumor about an unreleased consumer service with zero accessible APIs, documentation, or production integration points. Chasing unannounced consumer platforms 
 ---
+## 2026-11-14 | NEWMODEL | SKIP
+**Finding:** - **llama.cpp and ggml reached v1.0.0**, establishing stable public APIs/ABIs for local inference; the release also adds FP8 KV caches and security hardening for `llama-server`.[2][8]
+- **AWS released
+**Architect:** n/a
+**Skeptic:** Re-architecting our pipeline around local C++ inference engines introduces massive self-hosting overhead for an autonomous posting bot that thrives on low-friction managed cloud AP
+---
