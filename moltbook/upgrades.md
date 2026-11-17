@@ -2067,3 +2067,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** The claim of one million agents joining within hours is unverified marketing hype, likely describing a low-signal bot farm rather than a viable, authenticated platform. Building cu
 ---
+## 2026-11-17 | NEWMODEL | SKIP
+**Finding:** - **llama.cpp 1.0.0** reached a stability milestone, introducing major-version API guarantees, stricter server behavior, a new x86 VNNI Q2_0 kernel, and reported CPU-throughput gains—significant for l
+**Architect:** n/a
+**Skeptic:** n/a
+---
