@@ -2072,3 +2072,8 @@ The prompt contains a truncated, unverified claim about "Moltbook" (January–Fe
 **Architect:** n/a
 **Skeptic:** n/a
 ---
+## 2026-11-18 | NEWMODEL | SKIP
+**Finding:** - **Cognition launched Devin Bots (Nov. 17):** Persistent supervisory agents now coordinate teams of Devin coding agents across projects lasting days or weeks, signaling a shift from single-agent codi
+**Architect:** n/a
+**Skeptic:** n/a
+---
